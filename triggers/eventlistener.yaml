@@ -1,0 +1,19 @@
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: tknaac-listener-interceptor
+spec:
+  serviceAccountName: tekton-triggers-github-sa
+  triggers:
+    - name: github-listener
+      interceptors:
+        - github:
+            eventTypes:
+              - pull_request
+        - cel:
+            filter: "body.action in ['opened', 'synchronize', 'reopened']"
+      bindings:
+        - ref: tknaac-bindings
+      template:
+        name: tknaac-template

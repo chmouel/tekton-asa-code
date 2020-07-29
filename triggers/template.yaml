@@ -1,0 +1,20 @@
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: tknaac-template
+spec:
+  params:
+    - name: github_json
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: TaskRun
+      metadata:
+        generateName: tekton-as-a-code-run-
+      spec:
+        taskRef:
+          name: tekton-as-a-code
+        params:
+          - name: github_json
+            value: $(params.github_json)
+        serviceAccountName: tkn-aac-sa
