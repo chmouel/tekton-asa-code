@@ -1,18 +1,5 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# Author: Chmouel Boudjnah <chmouel@chmouel.com>
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+"""Main script for tekton as a code"""
 import http.client
 import io
 import json
@@ -24,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
 import urllib.parse
 
 GITHUB_HOST_URL = "api.github.com"
@@ -97,7 +85,10 @@ def parse_pr_results(jeez):
 
 
 def kapply(yaml_file, transformations, namespace):
+    """Apply kubernetes yaml template in a namespace with simple transformations
+    from a dict"""
     class MyTemplate(string.Template):
+        """Custom template"""
         delimiter = '{{'
         pattern = r'''
         \{\{(?:
@@ -119,8 +110,8 @@ def kapply(yaml_file, transformations, namespace):
 
 
 def main():
+    """main function"""
     checked_repo = "/tmp/checkedrepository"
-    has_tekton_files = False
 
     # Testing
     # pull_request_json = json.load(open("t.json"))
@@ -129,6 +120,7 @@ def main():
     api_url = f"https://{GITHUB_HOST_URL}/repos/{prdico['repo_full_name']}/issues/{prdico['pull_request_number']}"
 
     # TODO: Need to think if that's needed
+    # has_tekton_files = False
     # files_of_pull_request_json = json.loads(
     #     gh_request("GET", f"{api_url}/files").read())
     # for pr_file in files_of_pull_request_json:
@@ -174,8 +166,16 @@ def main():
             line = line.strip()
             if line.startswith("#"):
                 continue
-
-            kapply(f"{checked_repo}/tekton/{line}", prdico, namespace)
+            if line.startswith("https://"):
+                url_retrieved, _ = urllib.request.urlretrieve(line)
+                kapply(url_retrieved, prdico, namespace)
+            elif os.path.exists(f"{checked_repo}/tekton/{line}"):
+                kapply(f"{checked_repo}/tekton/{line}", prdico, namespace)
+            else:
+                print(
+                    "The file {line} specified in install.map is not found in tekton repository"
+                )
+                # TODO: shoudl we exit?
 
     time.sleep(2)
 
@@ -191,7 +191,7 @@ def main():
     status = regexp.findall(describe_output)[0].split(" ")[-1]
     print(describe_output)
 
-    post_command = json.loads(
+    json.loads(
         gh_request(
             "POST",
             f"{api_url}/comments",

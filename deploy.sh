@@ -94,13 +94,14 @@ roleRef:
 EOF
 }
 
-k triggers/*yaml
 
 # Tasks templates https://blog.chmouel.com/2020/07/28/tekton-yaml-templates-and-script-feature/
 for i in tasks/*/*.yaml;do
 	[[ -e $i ]] || continue # whateva
 	k <(~/GIT/perso/chmouzies/work/tekton-script-template.sh ${i})
 done
+
+k triggers/*yaml
 
 create_secret github "token=$(git config --get github.oauth-token)"
 give_cluster_admin
