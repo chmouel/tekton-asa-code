@@ -150,7 +150,7 @@ def main():
         body={
             "state": 'pending',
             "target_url": target_url,
-            "description": "Tekton CI has started",
+            "description": "Tekton CI is running",
             "context": "continuous-integration/tekton-as-code"
         }).read().decode()
 
