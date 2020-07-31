@@ -84,6 +84,27 @@ def get_key(key, jeez):
     return curr
 
 
+def get_errors(text):
+    """ Get all errors coming from """
+    errorstrings = r"(error|fail(ed)?)"
+    errorre = re.compile("^(.*%s.*)$" % (errorstrings),
+                         re.IGNORECASE | re.MULTILINE)
+    ret = ''
+    for i in errorre.findall(text):
+        i = re.sub(errorstrings, r"**\1**", i[0], flags=re.IGNORECASE)
+        ret += f" * <code>{i}</code>\n"
+
+    if ret:
+        return f"""
+Errors detected :
+
+{ret}
+
+"""
+    else:
+        return ""
+
+
 def kapply(yaml_file, jeez, namespace):
     """Apply kubernetes yaml template in a namespace with simple transformations
     from a dict"""
@@ -181,6 +202,7 @@ def main():
                 "body":
                 f"""CI has **{status}**
 
+{get_errors(output)}
 <details>
 <summary>PipelineRun Output</summary>
 
