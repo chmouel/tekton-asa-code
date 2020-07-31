@@ -76,7 +76,7 @@ def gh_request(method, url, body=None):
 def get_key(key, jeez):
     """Get key as a string like foo.bar.blah in dict => [foo][bar][blah] """
     curr = jeez
-    for k in key.split("."):
+    for k in key.split(f"{foo}"):
         if k not in curr:
             raise CouldNotFindConfigKeyException(
                 f"Could not find key {key} in json while parsing file")
