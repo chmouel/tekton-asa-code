@@ -10,7 +10,7 @@ spec:
     - name: repo_url
       value: {{repository.html_url}}
     - name: revision
-      value: {{pull_request.head.ref}}
+      value: {{pull_request.head.sha}}
   workspaces:
   - name: source
     volumeClaimTemplate:
