@@ -129,7 +129,22 @@ def main():
     # jeez = json.load(
     #     open(os.path.expanduser("~/tmp/tekton/apply-change-of-a-task/t.json")))
     jeez = json.loads("""$(params.github_json)""")
-    api_url = f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/issues/{get_key('number', jeez)}"
+    issue_url = f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/issues/{get_key('number', jeez)}"
+
+    # Set status as pending
+    print(
+        json.loads(
+            gh_request(
+                "POST",
+                f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/statuses/{get_key('pull_request.head.sha', jeez)}",
+                body={
+                    "data": {
+                        "state": 'pending',
+                        "description": "Tekton CI has started",
+                        "context": "continuous-integration/tekton-as-code"
+                    },
+                }).read().decode()))
+
     if not os.path.exists(checked_repo):
         os.makedirs(checked_repo)
         os.chdir(checked_repo)
@@ -143,12 +158,12 @@ def main():
     os.chdir(checked_repo)
     cmd = (
         f"git fetch https://{get_key('repository.owner.login', jeez)}:{GITHUB_TOKEN}"
-        f"@{get_key('repository.html_url', jeez).replace('https://', '')} {get_key('pull_request.head.ref', jeez)}"
+        f"@{get_key('repository.html_url', jeez).replace('https://', '')} {get_key('pull_request.head.sha', jeez)}"
     )
     execute(
         cmd, "Error checking out the GitHUB repo %s to the branch %s" %
         (get_key('repository.html_url',
-                 jeez), get_key('pull_request.head.ref', jeez)))
+                 jeez), get_key('pull_request.head.sha', jeez)))
 
     execute("git checkout -qf FETCH_HEAD;",
             "Error resetting git repository to FETCH_HEAD")
@@ -194,13 +209,25 @@ def main():
     status = regexp.findall(describe_output)[0].split(" ")[-1]
     print(describe_output)
 
-    json.loads(
-        gh_request(
-            "POST",
-            f"{api_url}/comments",
-            body={
-                "body":
-                f"""CI has **{status}**
+    # Set status on issue
+    gh_request(
+        "POST",
+        f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/statuses/{get_key('pull_request.head.sha', jeez)}",
+        body={
+            "data": {
+                "state": 'Failed' if 'failure' in status else 'success',
+                "context": "continuous-integration/tekton-as-code",
+                "description": f"CI has **{status}**",
+            },
+        })
+
+    # ADD comment to the issue
+    gh_request(
+        "POST",
+        f"{issue_url}/comments",
+        body={
+            "body":
+            f"""CI has **{status}**
 
 {get_errors(output)}
 <details>
@@ -222,8 +249,8 @@ def main():
 
 
 """
-            },
-        ).read())
+        },
+    )
 
     execute(f"kubectl delete ns {namespace}",
             "Cannot delete temporary namespace {namespace}")
