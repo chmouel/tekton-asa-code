@@ -213,7 +213,6 @@ def main():
         f"tkn pr describe -n {namespace} --last").stdout.decode()
     regexp = re.compile(r"^STARTED\s*DURATION\s*STATUS\n(.*)$", re.MULTILINE)
     status = regexp.findall(describe_output)[0].split(" ")[-1]
-    print(describe_output)
 
     # Set status on issue
     gh_request(
@@ -257,11 +256,12 @@ def main():
         },
     )
 
-    execute(f"kubectl delete ns {namespace}",
-            "Cannot delete temporary namespace {namespace}")
-
     if status == "Failed":
         sys.exit(1)
+
+    # Only delete if it succeed, keeping it for investigation
+    execute(f"kubectl delete ns {namespace}",
+            "Cannot delete temporary namespace {namespace}")
 
 
 if __name__ == '__main__':
