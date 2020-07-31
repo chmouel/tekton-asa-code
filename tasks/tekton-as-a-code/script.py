@@ -122,6 +122,9 @@ def kapply(yaml_file, jeez, namespace):
     os.remove(tmpfile)
 
 
+fff
+
+
 def main():
     """main function"""
     checked_repo = "/tmp/repository"
