@@ -26,13 +26,14 @@ class CouldNotFindConfigKeyException(Exception):
 
 def execute(command, check_error=""):
     """Execute commmand"""
+    result = ""
     try:
         result = subprocess.run(['/bin/sh', '-c', command],
                                 stdout=subprocess.PIPE,
                                 check=True)
     except subprocess.CalledProcessError as exception:
-        print(check_error)
-        raise exception
+        if check_error:
+            raise exception
     return result
 
 
@@ -130,6 +131,17 @@ def main():
     #     open(os.path.expanduser("~/tmp/tekton/apply-change-of-a-task/t.json")))
     jeez = json.loads("""$(params.github_json)""")
     issue_url = f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/issues/{get_key('number', jeez)}"
+    random_str = ''.join(
+        random.choices(string.ascii_letters + string.digits, k=4)).lower()
+    namespace = f"pull-{get_key('number', jeez)[:4]}-{random_str}"
+
+    target_url = ""
+    openshift_console_url = execute(
+        "kubectl get route -n openshift-console console -o jsonpath='{.spec.host}'",
+        check_error="cannot openshift-console route")
+
+    if openshift_console_url.returncode == 0:
+        target_url = f"https://{openshift_console_url.stdout.decode()}/k8s/ns/{namespace}/tekton.dev~v1beta1~PipelineRun/"
 
     # Set status as pending
     gh_request(
@@ -137,6 +149,7 @@ def main():
         f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/statuses/{get_key('pull_request.head.sha', jeez)}",
         body={
             "state": 'pending',
+            "target_url": target_url,
             "description": "Tekton CI has started",
             "context": "continuous-integration/tekton-as-code"
         }).read().decode()
@@ -164,9 +177,6 @@ def main():
     execute("git checkout -qf FETCH_HEAD;",
             "Error resetting git repository to FETCH_HEAD")
 
-    random_str = ''.join(
-        random.choices(string.ascii_letters + string.digits, k=4)).lower()
-    namespace = f"pull-{get_key('number', jeez)[:4]}-{random_str}"
     execute(f"kubectl create ns {namespace}",
             "Cannot create a temporary namespace")
     print(f"Namespace {namespace} has been created")
@@ -210,9 +220,10 @@ def main():
         "POST",
         f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/statuses/{get_key('pull_request.head.sha', jeez)}",
         body={
-            "state": 'Failed' if 'failure' in status else 'success',
+            "state": 'failure' if 'Failed' in status else 'success',
             "context": "continuous-integration/tekton-as-code",
             "description": f"Tekton CI has {status}",
+            "target_url": status_url if 'Failed' in status else '',
         })
 
     # ADD comment to the issue
