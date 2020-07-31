@@ -132,18 +132,14 @@ def main():
     issue_url = f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/issues/{get_key('number', jeez)}"
 
     # Set status as pending
-    print(
-        json.loads(
-            gh_request(
-                "POST",
-                f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/statuses/{get_key('pull_request.head.sha', jeez)}",
-                body={
-                    "data": {
-                        "state": 'pending',
-                        "description": "Tekton CI has started",
-                        "context": "continuous-integration/tekton-as-code"
-                    },
-                }).read().decode()))
+    gh_request(
+        "POST",
+        f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/statuses/{get_key('pull_request.head.sha', jeez)}",
+        body={
+            "state": 'pending',
+            "description": "Tekton CI has started",
+            "context": "continuous-integration/tekton-as-code"
+        }).read().decode()
 
     if not os.path.exists(checked_repo):
         os.makedirs(checked_repo)
@@ -214,11 +210,9 @@ def main():
         "POST",
         f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/statuses/{get_key('pull_request.head.sha', jeez)}",
         body={
-            "data": {
-                "state": 'Failed' if 'failure' in status else 'success',
-                "context": "continuous-integration/tekton-as-code",
-                "description": f"CI has **{status}**",
-            },
+            "state": 'Failed' if 'failure' in status else 'success',
+            "context": "continuous-integration/tekton-as-code",
+            "description": f"Tekton CI has {status}",
         })
 
     # ADD comment to the issue
