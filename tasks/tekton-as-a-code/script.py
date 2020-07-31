@@ -15,13 +15,12 @@ import urllib.request
 import urllib.parse
 
 GITHUB_HOST_URL = "api.github.com"
-TEKTON_YAML_REGEXP = re.compile(r"tekton/.*\.y(a?)ml")
 GITHUB_TOKEN = os.environ["GITHUBTOKEN"]
 
-PR_JSON_KEYS = [
-    "pull_request_revision",
-    "pull_request_repo_url",
-]
+
+class CouldNotFindConfigKeyException(Exception):
+    """Raise an exception when we cannot find the key string in json"""
+    pass
 
 
 def execute(command, check_error=""):
@@ -72,37 +71,29 @@ def gh_request(method, url, body=None):
     return response
 
 
-def parse_pr_results(jeez):
-    """Parse the Json results of """
-    return {
-        "repo_full_name": jeez["repository"]["full_name"],
-        "repo_owner_login": jeez["repository"]["owner"]["login"],
-        "repo_html_url": jeez["repository"]["html_url"],
-        "pull_request_head_sha": jeez["pull_request"]["head"]["sha"],
-        "pull_request_head_ref": jeez["pull_request"]["head"]["ref"],
-        "pull_request_number": str(jeez["number"]),
-    }
+def get_key(key, jeez):
+    """Get key as a string like foo.bar.blah in dict => [foo][bar][blah] """
+    curr = jeez
+    for k in key.split("."):
+        if k not in curr:
+            raise CouldNotFindConfigKeyException(
+                f"Could not find key {key} in json while parsing file")
+        curr = curr[k]
+    if not isinstance(curr, str):
+        curr = str(curr)
+    return curr
 
 
-def kapply(yaml_file, transformations, namespace):
+def kapply(yaml_file, jeez, namespace):
     """Apply kubernetes yaml template in a namespace with simple transformations
     from a dict"""
-    class MyTemplate(string.Template):
-        """Custom template"""
-        delimiter = '{{'
-        pattern = r'''
-        \{\{(?:
-        (?P<escaped>\{\{)|
-        (?P<named>[_a-z][_a-z0-9]*)\}\}|
-        (?P<braced>[_a-z][_a-z0-9]*)\}\}|
-        (?P<invalid>)
-        )
-        '''
 
     print(f"Processing {yaml_file} in {namespace}")
-    yaml_template = MyTemplate(open(yaml_file).read())
     tmpfile = tempfile.NamedTemporaryFile(delete=False).name
-    open(tmpfile, 'w').write(yaml_template.safe_substitute(transformations))
+    open(tmpfile, 'w').write(
+        re.sub(r"\{\{([_a-zA-Z0-9\.]*)\}\}",
+               lambda m: get_key(m.group(1), jeez),
+               open(yaml_file).read()))
     execute(
         f"kubectl apply -f {tmpfile} -n {namespace}",
         "Cannot apply {tmpfile} in {namespace} with {string(transformations)}")
@@ -111,27 +102,13 @@ def kapply(yaml_file, transformations, namespace):
 
 def main():
     """main function"""
-    checked_repo = "/tmp/checkedrepository"
+    checked_repo = "/tmp/repository"
 
-    # Testing
-    # pull_request_json = json.load(open("t.json"))
-    pull_request_json = json.loads("""$(params.github_json)""")
-    prdico = parse_pr_results(pull_request_json)
-    api_url = f"https://{GITHUB_HOST_URL}/repos/{prdico['repo_full_name']}/issues/{prdico['pull_request_number']}"
-
-    # TODO: Need to think if that's needed
-    # has_tekton_files = False
-    # files_of_pull_request_json = json.loads(
-    #     gh_request("GET", f"{api_url}/files").read())
-    # for pr_file in files_of_pull_request_json:
-    #     if TEKTON_YAML_REGEXP.match(pr_file["filename"]):
-    #         has_tekton_files = True
-    #         break
-
-    # if not has_tekton_files:
-    #     print("Could not find any tekton file, aborting")
-    #     return
-
+    # # Testing
+    # jeez = json.load(
+    #     open(os.path.expanduser("~/tmp/tekton/apply-change-of-a-task/t.json")))
+    jeez = json.loads("""$(params.github_json)""")
+    api_url = f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/issues/{get_key('number', jeez)}"
     if not os.path.exists(checked_repo):
         os.makedirs(checked_repo)
         os.chdir(checked_repo)
@@ -144,19 +121,20 @@ def main():
 
     os.chdir(checked_repo)
     cmd = (
-        f"git fetch https://{prdico['repo_owner_login']}:{GITHUB_TOKEN}"
-        f"@{prdico['repo_html_url'].replace('https://', '')} {prdico['pull_request_head_ref']}"
+        f"git fetch https://{get_key('repository.owner.login', jeez)}:{GITHUB_TOKEN}"
+        f"@{get_key('repository.html_url', jeez).replace('https://', '')} {get_key('pull_request.head.ref', jeez)}"
     )
     execute(
         cmd, "Error checking out the GitHUB repo %s to the branch %s" %
-        (prdico['repo_html_url'], prdico['pull_request_head_ref']))
+        (get_key('repository.html_url',
+                 jeez), get_key('pull_request.head.ref', jeez)))
 
     execute("git checkout -qf FETCH_HEAD;",
             "Error resetting git repository to FETCH_HEAD")
 
     random_str = ''.join(
         random.choices(string.ascii_letters + string.digits, k=4)).lower()
-    namespace = f"pull-{prdico['pull_request_number'][:4]}-{random_str}"
+    namespace = f"pull-{get_key('number', jeez)[:4]}-{random_str}"
     execute(f"kubectl create ns {namespace}",
             "Cannot create a temporary namespace")
     print(f"Namespace {namespace} has been created")
@@ -168,9 +146,9 @@ def main():
                 continue
             if line.startswith("https://"):
                 url_retrieved, _ = urllib.request.urlretrieve(line)
-                kapply(url_retrieved, prdico, namespace)
+                kapply(url_retrieved, jeez, namespace)
             elif os.path.exists(f"{checked_repo}/tekton/{line}"):
-                kapply(f"{checked_repo}/tekton/{line}", prdico, namespace)
+                kapply(f"{checked_repo}/tekton/{line}", jeez, namespace)
             else:
                 print(
                     "The file {line} specified in install.map is not found in tekton repository"
@@ -179,7 +157,7 @@ def main():
         for filename in os.listdir(os.path.join(checked_repo, "tekton")):
             if not filename.endswith(".yaml"):
                 continue
-            kapply(filename, prdico, namespace)
+            kapply(filename, jeez, namespace)
 
     time.sleep(2)
 
@@ -224,6 +202,9 @@ def main():
 """
             },
         ).read())
+
+    execute(f"kubectl delete ns {namespace}",
+            "Cannot delete temporary namespace {namespace}")
 
     if status == "Failed":
         sys.exit(1)
