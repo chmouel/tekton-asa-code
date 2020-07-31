@@ -186,6 +186,19 @@ def main():
             line = line.strip()
             if line.startswith("#"):
                 continue
+
+            # remove inline comments
+            if " #" in line:
+                line = line[:line.find(" #")]
+
+            # if we have something like catalog:// expand to tektoncd/catalog
+            if line.startswith("catalog://"):
+                line = line.replace(
+                    "catalog://",
+                    "https://raw.githubusercontent.com/tektoncd/catalog/master/task/"
+                )
+
+            # if we have a URL retrieve it (with GH token)
             if line.startswith("https://"):
                 url_retrieved, _ = urllib.request.urlretrieve(line)
                 kapply(url_retrieved, jeez, namespace)
@@ -193,7 +206,7 @@ def main():
                 kapply(f"{checked_repo}/tekton/{line}", jeez, namespace)
             else:
                 print(
-                    "The file {line} specified in install.map is not found in tekton repository"
+                    f"The file {line} specified in install.map is not found in tekton repository"
                 )
     else:
         for filename in os.listdir(os.path.join(checked_repo, "tekton")):
