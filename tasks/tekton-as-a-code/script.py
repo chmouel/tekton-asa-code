@@ -18,6 +18,7 @@ GITHUB_HOST_URL = "api.github.com"
 GITHUB_TOKEN = os.environ["GITHUBTOKEN"]
 
 
+# pylint: disable=unnecessary-pass
 class CouldNotFindConfigKeyException(Exception):
     """Raise an exception when we cannot find the key string in json"""
     pass
@@ -94,15 +95,14 @@ def get_errors(text):
         i = re.sub(errorstrings, r"**\1**", i[0], flags=re.IGNORECASE)
         ret += f" * <code>{i}</code>\n"
 
-    if ret:
-        return f"""
+    if not ret:
+        return ""
+    return f"""
 Errors detected :
 
 {ret}
 
 """
-    else:
-        return ""
 
 
 def kapply(yaml_file, jeez, namespace):
