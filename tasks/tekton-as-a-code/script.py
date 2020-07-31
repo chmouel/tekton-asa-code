@@ -223,7 +223,7 @@ def main():
             "state": 'failure' if 'Failed' in status else 'success',
             "context": "continuous-integration/tekton-as-code",
             "description": f"Tekton CI has {status}",
-            "target_url": status_url if 'Failed' in status else '',
+            "target_url": target_url if 'Failed' in status else '',
         })
 
     # ADD comment to the issue
