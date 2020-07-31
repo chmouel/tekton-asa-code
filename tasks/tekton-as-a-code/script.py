@@ -175,7 +175,11 @@ def main():
                 print(
                     "The file {line} specified in install.map is not found in tekton repository"
                 )
-                # TODO: shoudl we exit?
+    else:
+        for filename in os.listdir(os.path.join(checked_repo, "tekton")):
+            if not filename.endswith(".yaml"):
+                continue
+            kapply(filename, prdico, namespace)
 
     time.sleep(2)
 
