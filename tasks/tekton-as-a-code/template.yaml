@@ -34,6 +34,8 @@ spec:
   steps:
     - name: apply-and-launch
       env:
+        - name: PYTHONUNBUFFERED
+          value: "true"
         - name: GITHUBTOKEN
           valueFrom:
             secretKeyRef:
