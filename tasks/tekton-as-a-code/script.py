@@ -238,6 +238,18 @@ def main():
             "target_url": target_url if 'Failed' in status else '',
         })
 
+    pipelinerun_output = ""
+    if output:
+        pipelinerun_output = f"""<details>
+<summary>PipelineRun Output</summary>
+
+```
+{output}
+```
+</details>
+
+"""
+
     # ADD comment to the issue
     gh_request(
         "POST",
@@ -247,14 +259,7 @@ def main():
             f"""CI has **{status}**
 
 {get_errors(output)}
-<details>
-<summary>PipelineRun Output</summary>
-
-```
-{output}
-```
-</details>
-
+{pipelinerun_output}
 <details>
 <summary>PipelineRun status</summary>
 
