@@ -38,7 +38,9 @@ It wil let you know if it has succeedd or not, and if there is failure it will t
 ## IDEAS
 
 * move install.map over a yaml file, which looks less weird than install.map
+* post results into task for reuse.
+* breaks that big python script to reusable small tasks that chains together with results (which we would then have some overheard of the containers creation)
 * have the install.map being able to have some sort of project_type which would add all the pipeline itself, for example if we have :
-  project_type=golang
+  `project_type=golang`
   It will add a pipeline that would test golangs with no user having to add their own.
   
