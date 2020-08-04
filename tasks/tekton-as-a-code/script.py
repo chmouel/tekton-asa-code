@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# coding=utf8
 """Main script for tekton as a code"""
 import http.client
 import io
