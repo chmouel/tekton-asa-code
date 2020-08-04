@@ -134,7 +134,12 @@ def main():
     # # Testing
     # jeez = json.load(
     #     open(os.path.expanduser("~/tmp/tekton/apply-change-of-a-task/t.json")))
-    jeez = json.loads("""$(params.github_json)""")
+    param = """$(params.github_json)""".replace(
+        "\n", " ")  # TODO: why is it that json lib bugs on newline
+    if not param:
+        print("Cannot find a github_json param")
+        sys.exit(1)
+    jeez = json.loads(param)
     issue_url = f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/issues/{get_key('number', jeez)}"
     random_str = ''.join(
         random.choices(string.ascii_letters + string.digits, k=4)).lower()
