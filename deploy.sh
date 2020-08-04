@@ -2,7 +2,7 @@
 # Configure this to your own route
 PUBLIC_ROUTE_HOSTNAME=${PUBLIC_ROUTE_HOSTNAME:-tektonic.apps.chmouel.devcluster.openshift.com}
 
-GITHUB_SECRET=${GITHUB_SECRET:-"token=$(git config --get github.oauth-token)"}
+GITHUB_SECRET=${GITHUB_SECRET:-"$(git config --get github.oauth-token)"}
 SERVICE=el-tknaac-listener-interceptor
 TARGET_NAMESPACE=tknaac
 SERVICE_ACCOUNT=tkn-aac-sa
@@ -106,7 +106,7 @@ done
 
 k triggers/*yaml
 
-create_secret github ${GITHUB_SECRET}
+create_secret github token=${GITHUB_SECRET}
 give_cluster_admin
 
 waitfor service/${SERVICE}
