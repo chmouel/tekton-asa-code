@@ -17,6 +17,11 @@ import urllib.parse
 GITHUB_HOST_URL = "api.github.com"
 GITHUB_TOKEN = os.environ["GITHUBTOKEN"]
 
+CATALOGS = {
+    'official':
+    'https://raw.githubusercontent.com/tektoncd/catalog/master/task',
+}
+
 
 # pylint: disable=unnecessary-pass
 class CouldNotFindConfigKeyException(Exception):
@@ -191,12 +196,21 @@ def main():
             if " #" in line:
                 line = line[:line.find(" #")]
 
-            # if we have something like catalog:// expand to tektoncd/catalog
+            # if we have something like catalog:// do some magic :
+            # in: catalog://official:git-clone:0.1
+            # out: https://raw.githubusercontent.com/tektoncd/catalog/master/task/git-clone/0.1/git-clone.yaml
             if line.startswith("catalog://"):
-                line = line.replace(
-                    "catalog://",
-                    "https://raw.githubusercontent.com/tektoncd/catalog/master/task/"
-                )
+                splitted = line.replace("catalog://", "").split(":")
+                if len(splitted) != 3:
+                    print(f'The line in install.map:"{line}" is invalid')
+                    continue
+                if splitted[0] not in CATALOGS:
+                    print(
+                        f'The catalog "{splitted[0]}" in line: "{line}" is invalid'
+                    )
+                    continue
+
+                line = f"{CATALOGS[splitted[0]]}/{splitted[1]}/{splitted[2]}/{splitted[1]}.yaml"
 
             # if we have a URL retrieve it (with GH token)
             if line.startswith("https://"):
