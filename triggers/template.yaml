@@ -16,5 +16,5 @@ spec:
           name: tekton-as-a-code
         params:
           - name: github_json
-            value: $(params.github_json)
+            value: $(tt.params.github_json)
         serviceAccountName: tkn-aac-sa

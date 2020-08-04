@@ -1,6 +1,6 @@
 # ORDER of installing all yaml files
-catalog://git-clone/0.1/git-clone.yaml
-catalog://yaml-lint/0.1/yaml-lint.yaml
+catalog://official:git-clone:0.1
+catalog://official:yaml-lint:0.1
 https://raw.githubusercontent.com/chmouel/catalog/fix-pylint-task/task/pylint/0.1/pylint.yaml # fork version
 pipeline.yaml
 run.yaml
