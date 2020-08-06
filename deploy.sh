@@ -6,6 +6,7 @@ GITHUB_SECRET=${GITHUB_SECRET:-"$(git config --get github.oauth-token)"}
 SERVICE=el-tknaac-listener-interceptor
 TARGET_NAMESPACE=tknaac
 SERVICE_ACCOUNT=tkn-aac-sa
+OC_BIN=${OC_BIN:-kubectl}
 set -e
 
 while getopts "rn:" o; do
@@ -23,14 +24,14 @@ while getopts "rn:" o; do
 done
 shift $((OPTIND-1))
 
-oc get project ${TARGET_NAMESPACE} >/dev/null 2>/dev/null || oc new-project ${TARGET_NAMESPACE}
+${OC_BIN} get project ${TARGET_NAMESPACE} >/dev/null 2>/dev/null || ${OC_BIN} new-project ${TARGET_NAMESPACE}
 
 function k() {
     for file in $@;do
         [[ -n ${recreate} ]] && {
-            kubectl -n ${TARGET_NAMESPACE} delete -f ${file}
+            ${OC_BIN} -n ${TARGET_NAMESPACE} delete -f ${file}
         }
-        kubectl -n ${TARGET_NAMESPACE} apply -f ${file}
+        ${OC_BIN} -n ${TARGET_NAMESPACE} apply -f ${file}
     done
 }
 
@@ -43,7 +44,7 @@ function waitfor() {
             echo "failed.. cannot wait any longer"
             exit 1
         }
-        kubectl -n ${TARGET_NAMESPACE} get ${thing} 2>/dev/null && break
+        ${OC_BIN} -n ${TARGET_NAMESPACE} get ${thing} 2>/dev/null && break
         (( cnt++ ))
         echo -n "."
         sleep 10
@@ -54,25 +55,25 @@ function waitfor() {
 function openshift_expose_service () {
 	local s=${1}
     local n=${2}
-    oc delete route ${s} >/dev/null || true
+    ${OC_BIN} delete route ${s} >/dev/null || true
     [[ -n ${n} ]] && n="--hostname=${n}"
-	oc expose service ${s} ${n} && \
-        oc apply -f <(oc get route ${s}  -o json |jq -r '.spec |= . + {tls: {"insecureEdgeTerminationPolicy": "Redirect", "termination": "edge"}}') >/dev/null && \
-        echo "https://$(oc get route ${s} -o jsonpath='{.spec.host}')"
+	${OC_BIN} expose service ${s} ${n} && \
+        ${OC_BIN} apply -f <(${OC_BIN} get route ${s}  -o json |jq -r '.spec |= . + {tls: {"insecureEdgeTerminationPolicy": "Redirect", "termination": "edge"}}') >/dev/null && \
+        echo "https://$(${OC_BIN} get route ${s} -o jsonpath='{.spec.host}')"
 }
 
 function create_secret() {
     local s=${1}
     local literal=${2}
-    [[ -n ${recreate} ]] && kubectl delete secret ${s}
-    kubectl -n ${TARGET_NAMESPACE} get secret ${s} >/dev/null 2>/dev/null || \
-        kubectl -n ${TARGET_NAMESPACE} create secret generic ${s} --from-literal ${literal}
+    [[ -n ${recreate} ]] && ${OC_BIN} delete secret ${s}
+    ${OC_BIN} -n ${TARGET_NAMESPACE} get secret ${s} >/dev/null 2>/dev/null || \
+        ${OC_BIN} -n ${TARGET_NAMESPACE} create secret generic ${s} --from-literal ${literal}
 }
 
 function give_cluster_admin() {
     #TODO: not ideal
     set -x
-    cat <<EOF | kubectl apply -f- -n${TARGET_NAMESPACE}
+    cat <<EOF | ${OC_BIN} apply -f- -n${TARGET_NAMESPACE}
 ---
 apiVersion: v1
 kind: ServiceAccount
