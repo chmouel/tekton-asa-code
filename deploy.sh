@@ -6,8 +6,12 @@ GITHUB_SECRET=${GITHUB_SECRET:-"$(git config --get github.oauth-token)"}
 SERVICE=el-tknaac-listener-interceptor
 TARGET_NAMESPACE=tknaac
 SERVICE_ACCOUNT=tkn-aac-sa
-OC_BIN=${OC_BIN:-kubectl}
+OC_BIN=${OC_BIN:-oc}
 set -e
+
+TMPFILE=$(mktemp /tmp/.mm.XXXXXX)
+clean() { rm -f ${TMPFILE}; }
+trap clean EXIT
 
 while getopts "rn:" o; do
     case "${o}" in
@@ -24,7 +28,7 @@ while getopts "rn:" o; do
 done
 shift $((OPTIND-1))
 
-${OC_BIN} get project ${TARGET_NAMESPACE} >/dev/null 2>/dev/null || ${OC_BIN} new-project ${TARGET_NAMESPACE}
+${OC_BIN} get project ${TARGET_NAMESPACE} >/dev/null 2>/dev/null || ${OC_BIN} new-project ${TARGET_NAMESPACE} || true
 
 function k() {
     for file in $@;do
@@ -98,11 +102,33 @@ roleRef:
 EOF
 }
 
-
 # Tasks templates https://blog.chmouel.com/2020/07/28/tekton-yaml-templates-and-script-feature/
+function tkn_template() {
+    local fname=${1:-template.yaml}
+    cat ${fname} > ${TMPFILE}
+    cd $(dirname $(readlink -f ${fname}))
+    local oifs=${IFS}
+    IFS="
+"
+
+    for line in $(grep "## INSERT" $(basename ${fname}));do
+        local F2=$(<${TMPFILE})
+
+        local scriptfile=${line//## INSERT /}
+        scriptfile=${scriptfile//[ ]/}
+        [[ -e ${scriptfile} ]] || { echo "Could not find ${scriptfile}"; continue ;}
+        local indentation="$(grep -B1 ${line} template.yaml|head -1|sed 's/^\([ ]*\).*/\1/')"
+        indentation="${indentation}    "
+        local F1=$(sed "s/^/${indentation}/" ${scriptfile})
+        cat <(echo "${F2//${line}/$F1}") > ${TMPFILE}
+    done
+
+    cat ${TMPFILE}
+}
+
 for i in tasks/*/*.yaml;do
 	[[ -e $i ]] || continue # whateva
-	k <(~/GIT/perso/chmouzies/work/tekton-script-template.sh ${i})
+	k <(tkn_template ${i})
 done
 
 k triggers/*yaml
