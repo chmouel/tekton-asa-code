@@ -49,7 +49,7 @@ function waitfor() {
             exit 1
         }
         ${OC_BIN} -n ${TARGET_NAMESPACE} get ${thing} 2>/dev/null && break
-        (( cnt++ ))
+ 		((cnt=cnt+1))
         echo -n "."
         sleep 10
     done
