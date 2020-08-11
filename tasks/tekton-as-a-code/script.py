@@ -220,7 +220,13 @@ def main():
 
             # if we have a URL retrieve it (with GH token)
             if line.startswith("https://"):
-                url_retrieved, _ = urllib.request.urlretrieve(line)
+                try:
+                    url_retrieved, _ = urllib.request.urlretrieve(line)
+                except urllib.error.HTTPError as http_error:
+                    print(
+                        f"Cannot retrieve remote task {line} as specified in install.map: {http_error}"
+                    )
+                    sys.exit(1)
                 kapply(url_retrieved, jeez, namespace)
             elif os.path.exists(f"{checked_repo}/tekton/{line}"):
                 kapply(f"{checked_repo}/tekton/{line}", jeez, namespace)
