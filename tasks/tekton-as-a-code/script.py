@@ -220,7 +220,13 @@ def main():
 
             # if we have a URL retrieve it (with GH token)
             if line.startswith("https://"):
-                url_retrieved, _ = urllib.request.urlretrieve(line)
+                try:
+                    url_retrieved, _ = urllib.request.urlretrieve(line)
+                except urllib.error.HTTPError as http_error:
+                    print(
+                        f"Cannot retrieve remote task {line} as specified in install.map: {http_error}"
+                    )
+                    sys.exit(1)
                 kapply(url_retrieved, jeez, namespace)
             elif os.path.exists(f"{checked_repo}/tekton/{line}"):
                 kapply(f"{checked_repo}/tekton/{line}", jeez, namespace)
@@ -246,6 +252,7 @@ def main():
         f"tkn pr describe -n {namespace} --last").stdout.decode()
     regexp = re.compile(r"^STARTED\s*DURATION\s*STATUS\n(.*)$", re.MULTILINE)
     status = regexp.findall(describe_output)[0].split(" ")[-1]
+    status_emoji = "💥" if 'Failed' in status else '👌'
 
     # Set status on issue
     gh_request(
@@ -276,7 +283,7 @@ def main():
         f"{issue_url}/comments",
         body={
             "body":
-            f"""CI has **{status}**
+            f"""CI has **{status}** {status_emoji}
 
 {get_errors(output)}
 {pipelinerun_output}
