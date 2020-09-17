@@ -312,5 +312,5 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except Exception as e:
-        print(e)
+    except Exception as errout:
+        print(errout)
