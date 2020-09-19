@@ -3,11 +3,14 @@
 PUBLIC_ROUTE_HOSTNAME=${PUBLIC_ROUTE_HOSTNAME:-tektonic.apps.chmouel.devcluster.openshift.com}
 
 GITHUB_SECRET=${GITHUB_SECRET:-"$(git config --get github.oauth-token)"}
-SERVICE=el-tekton-asa-code
+GITHUB_APP_PRIVATE_KEY=${GITHUB_APP_PRIVATE_KEY:-./tmp/github.app.key}
+SERVICE=el-tekton-asa-code-listener-interceptor
 TARGET_NAMESPACE=tekton-asa-code
 SERVICE_ACCOUNT=tkn-aac-sa
 OC_BIN=${OC_BIN:-oc}
 set -e
+
+EXTERNAL_TASKS="https://raw.githubusercontent.com/chmouel/catalog/add-github-app-token/task/github-app-token/0.1/github-app-token.yaml"
 
 TMPFILE=$(mktemp /tmp/.mm.XXXXXX)
 clean() { rm -f ${TMPFILE}; }
@@ -71,7 +74,7 @@ function create_secret() {
     local literal=${2}
     [[ -n ${recreate} ]] && ${OC_BIN} delete secret ${s}
     ${OC_BIN} -n ${TARGET_NAMESPACE} get secret ${s} >/dev/null 2>/dev/null || \
-        ${OC_BIN} -n ${TARGET_NAMESPACE} create secret generic ${s} --from-literal ${literal}
+        ${OC_BIN} -n ${TARGET_NAMESPACE} create secret generic ${s} --from-literal "${literal}"
 }
 
 function give_cluster_admin() {
@@ -133,7 +136,12 @@ done
 
 k triggers/*yaml pipeline/*.yaml
 
-create_secret github token=${GITHUB_SECRET}
+for i in ${EXTERNAL_TASKS};do
+    k ${i}
+done
+
+
+create_secret github-app-secret private.key="$(cat ${GITHUB_APP_PRIVATE_KEY})"
 give_cluster_admin
 waitfor service/${SERVICE}
 
