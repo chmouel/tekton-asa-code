@@ -2,7 +2,7 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerBinding
 metadata:
-  name: tknaac-bindings
+  name: tekton-asa-code-bindings
 spec:
   params:
     - name: github_json

@@ -3,8 +3,8 @@
 PUBLIC_ROUTE_HOSTNAME=${PUBLIC_ROUTE_HOSTNAME:-tektonic.apps.chmouel.devcluster.openshift.com}
 
 GITHUB_SECRET=${GITHUB_SECRET:-"$(git config --get github.oauth-token)"}
-SERVICE=el-tknaac-listener-interceptor
-TARGET_NAMESPACE=tekton-as-code
+SERVICE=el-tekton-asa-code
+TARGET_NAMESPACE=tekton-asa-code
 SERVICE_ACCOUNT=tkn-aac-sa
 OC_BIN=${OC_BIN:-oc}
 set -e
@@ -89,7 +89,7 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: tkaac-cluster-role-binding
+  name: tekton-asa-code-clusterrole-bind
   namespace: ${TARGET_NAMESPACE}
 subjects:
   - kind: ServiceAccount

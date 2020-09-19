@@ -2,10 +2,10 @@
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  name: tekton-as-a-code-check-pr
+  name: tekton-asa-code-check-pr
 spec:
   pipelineRef:
-    name: tekton-as-code-check
+    name: tekton-asa-code-check
   params:
     - name: repo_url
       value: {{repository.html_url}}

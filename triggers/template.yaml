@@ -2,7 +2,7 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
-  name: tknaac-template
+  name: tekton-asa-code-template
 spec:
   params:
     - name: installation_id

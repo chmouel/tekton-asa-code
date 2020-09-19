@@ -25,7 +25,7 @@ which would say, install the git-clone task version 0.1 from the official catalo
 
 https://raw.githubusercontent.com/tektoncd/catalog/master/task/git-clone/0.1/git-clone.yaml
 
-When there is a new PR, tekton-as-code will create new namespaces and apply all the object in there, and try to get the latest pipelinerun ran in that new namespace and exposes it into the github PR as comment,
+When there is a new PR, tekton-asa-code will create new namespaces and apply all the object in there, and try to get the latest pipelinerun ran in that new namespace and exposes it into the github PR as comment,
 
 It will shows you a link to the openshift console url to follow the PR if that's available
 
