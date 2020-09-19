@@ -35,6 +35,7 @@ It wil let you know if it has succeedd or not, and if there is failure it will t
 
 * cluster-admin permission, we are creating a new namespace everytime and needs to some pipeline/task and other stuff in there, we are currently using cluster-admin for simplicity but hopefully we have ideas to leverage the operator code to apply automatically the right rights the same way we do with the `pipeline` serviceaccount.
 * if tekton-as-run python script has failure it doesn't report back properly.
+* Fall back nicely if there is no tekton directory in repo.
 
 ## IDEAS
 

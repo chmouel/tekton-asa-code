@@ -1,0 +1,33 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: tekton-as-a-code
+spec:
+  params:
+    - name: application_id
+    - name: installation_id
+    - name: github_json
+  workspaces:
+    - name: secrets
+  tasks:
+    - name: get-token
+      taskRef:
+        name: github-app-token
+      params:
+        - name: application_id
+          value: $(params.application_id)
+        - name: installation_id
+          value: $(params.installation_id)
+      workspaces:
+        - name: secrets
+          workspace: secrets
+    - name: tekton-asa-code
+      runAfter: [get-token]
+      taskRef:
+        name: tekton-asa-code
+      params:
+      - name: github_token
+        value: "$(tasks.get-token.results.token)"
+      - name: github_json
+        value: "$(params.github_json)"

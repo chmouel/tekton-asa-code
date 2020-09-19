@@ -4,7 +4,7 @@ PUBLIC_ROUTE_HOSTNAME=${PUBLIC_ROUTE_HOSTNAME:-tektonic.apps.chmouel.devcluster.
 
 GITHUB_SECRET=${GITHUB_SECRET:-"$(git config --get github.oauth-token)"}
 SERVICE=el-tknaac-listener-interceptor
-TARGET_NAMESPACE=tknaac
+TARGET_NAMESPACE=tekton-as-code
 SERVICE_ACCOUNT=tkn-aac-sa
 OC_BIN=${OC_BIN:-oc}
 set -e
@@ -59,10 +59,10 @@ function waitfor() {
 function openshift_expose_service () {
 	local s=${1}
     local n=${2}
-    ${OC_BIN} delete route ${s} >/dev/null || true
+    ${OC_BIN} delete route -n ${TARGET_NAMESPACE} ${s} >/dev/null || true
     [[ -n ${n} ]] && n="--hostname=${n}"
-	${OC_BIN} expose service ${s} ${n} && \
-        ${OC_BIN} apply -f <(${OC_BIN} get route ${s}  -o json |jq -r '.spec |= . + {tls: {"insecureEdgeTerminationPolicy": "Redirect", "termination": "edge"}}') >/dev/null && \
+	${OC_BIN} expose service -n ${TARGET_NAMESPACE} ${s} ${n} && \
+        ${OC_BIN} apply -n ${TARGET_NAMESPACE} -f <(${OC_BIN} get route ${s}  -o json |jq -r '.spec |= . + {tls: {"insecureEdgeTerminationPolicy": "Redirect", "termination": "edge"}}') >/dev/null && \
         echo "https://$(${OC_BIN} get route ${s} -o jsonpath='{.spec.host}')"
 }
 
@@ -131,11 +131,10 @@ for i in tasks/*/*.yaml;do
 	k <(tkn_template ${i})
 done
 
-k triggers/*yaml
+k triggers/*yaml pipeline/*.yaml
 
 create_secret github token=${GITHUB_SECRET}
 give_cluster_admin
-
 waitfor service/${SERVICE}
 
 openshift_expose_service ${SERVICE} ${PUBLIC_ROUTE_HOSTNAME}

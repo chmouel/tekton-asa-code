@@ -10,9 +10,9 @@ spec:
       interceptors:
         - github:
             eventTypes:
-              - pull_request
+              - check_suite
         - cel:
-            filter: "body.action in ['opened', 'synchronize', 'reopened']"
+            filter: "body.action in ['requested'] && 'installation' in body"
       bindings:
         - ref: tknaac-bindings
       template:

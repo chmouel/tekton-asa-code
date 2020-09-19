@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # coding=utf8
-"""Main script for tekton as a code"""
+import datetime
 import http.client
 import io
 import json
@@ -12,11 +12,12 @@ import subprocess
 import sys
 import tempfile
 import time
-import urllib.request
 import urllib.parse
+import urllib.request
+"""Main script for tekton as a code"""
 
 GITHUB_HOST_URL = "api.github.com"
-GITHUB_TOKEN = os.environ["GITHUBTOKEN"]
+GITHUB_TOKEN = """$(params.github_token)"""
 
 CATALOGS = {
     'official':
@@ -61,18 +62,19 @@ def stream(command, filename, check_error=""):
         sys.stdout.write(reader.read().decode())
 
 
-def gh_request(method, url, body=None):
+def gh_request(method, url, headers=None, body=None):
     """Execute a request to the GitHUB API, handling redirect"""
+    if not headers:
+        headers = {}
+    headers.update({
+        "User-Agent": "TektonCD, the peaceful cat",
+        "Authorization": "Bearer " + GITHUB_TOKEN,
+    })
+
     url_parsed = urllib.parse.urlparse(url)
     body = body and json.dumps(body)
     conn = http.client.HTTPSConnection(url_parsed.hostname)
-    conn.request(method,
-                 url_parsed.path,
-                 body=body,
-                 headers={
-                     "User-Agent": "TektonCD, the peaceful cat",
-                     "Authorization": "Bearer " + GITHUB_TOKEN,
-                 })
+    conn.request(method, url_parsed.path, body=body, headers=headers)
     response = conn.getresponse()
     if response.status == 301:
         return gh_request(method, response.headers["Location"])
@@ -141,10 +143,10 @@ def main():
         print("Cannot find a github_json param")
         sys.exit(1)
     jeez = json.loads(param)
-    issue_url = f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/issues/{get_key('number', jeez)}"
+    # issue_url = f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/issues/{get_key('number', jeez)}"
     random_str = ''.join(
         random.choices(string.ascii_letters + string.digits, k=4)).lower()
-    namespace = f"pull-{get_key('number', jeez)[:4]}-{random_str}"
+    namespace = f"pull-{get_key('check_suite.head_sha', jeez)[:4]}-{random_str}"
 
     target_url = ""
     openshift_console_url = execute(
@@ -155,15 +157,21 @@ def main():
         target_url = f"https://{openshift_console_url.stdout.decode()}/k8s/ns/{namespace}/tekton.dev~v1beta1~PipelineRun/"
 
     # Set status as pending
-    gh_request(
+    check_run_json = gh_request(
         "POST",
-        f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/statuses/{get_key('pull_request.head.sha', jeez)}",
+        f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/check-runs",
+        headers={
+            "Accept": "application/vnd.github.antiope-preview+json"
+        },
         body={
-            "state": 'pending',
-            "target_url": target_url,
-            "description": "Tekton CI is running",
-            "context": "continuous-integration/tekton-as-code"
+            "name": 'tekton-asa-code',
+            "details_url": target_url,
+            "status": "in_progress",
+            'head_sha': jeez['check_suite']['head_sha'],
+            'started_at':
+            datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
         }).read().decode()
+    check_run_json = json.loads(check_run_json)
 
     if not os.path.exists(checked_repo):
         os.makedirs(checked_repo)
@@ -178,12 +186,12 @@ def main():
     os.chdir(checked_repo)
     cmd = (
         f"git fetch https://{get_key('repository.owner.login', jeez)}:{GITHUB_TOKEN}"
-        f"@{get_key('repository.html_url', jeez).replace('https://', '')} {get_key('pull_request.head.sha', jeez)}"
+        f"@{get_key('repository.html_url', jeez).replace('https://', '')} {get_key('check_suite.head_sha', jeez)}"
     )
     execute(
         cmd, "Error checking out the GitHUB repo %s to the branch %s" %
         (get_key('repository.html_url',
-                 jeez), get_key('pull_request.head.sha', jeez)))
+                 jeez), get_key('check_suite.head_sha', jeez)))
 
     execute("git checkout -qf FETCH_HEAD;",
             "Error resetting git repository to FETCH_HEAD")
@@ -254,16 +262,7 @@ def main():
     status = regexp.findall(describe_output)[0].split(" ")[-1]
     status_emoji = "💥" if 'Failed' in status else '👌'
 
-    # Set status on issue
-    gh_request(
-        "POST",
-        f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/statuses/{get_key('pull_request.head.sha', jeez)}",
-        body={
-            "state": 'failure' if 'Failed' in status else 'success',
-            "context": "continuous-integration/tekton-as-code",
-            "description": f"Tekton CI has {status}",
-            "target_url": target_url if 'Failed' in status else '',
-        })
+    print(describe_output)
 
     pipelinerun_output = ""
     if output:
@@ -276,14 +275,28 @@ def main():
 </details>
 
 """
-
-    # ADD comment to the issue
-    gh_request(
-        "POST",
-        f"{issue_url}/comments",
+    # Set status as pending
+    output = gh_request(
+        "PATCH",
+        f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/check-runs/{check_run_json['id']}",
+        headers={
+            "Accept": "application/vnd.github.antiope-preview+json"
+        },
         body={
-            "body":
-            f"""CI has **{status}** {status_emoji}
+            "name": 'tekton-asa-code',
+            "details_url": target_url,
+            "status": "completed",
+            'conclusion': (status.lower() == 'failed' and 'failure'
+                           or 'success'),
+            'completed_at':
+            datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            'output': {
+                "title":
+                "Tekton has code report",
+                "summary":
+                f"CI has **{status}** {status_emoji}",
+                "text":
+                f"""
 
 {get_errors(output)}
 {pipelinerun_output}
@@ -295,11 +308,9 @@ def main():
 ```
 </details>
 
-
-
 """
-        },
-    )
+            }
+        }).read().decode()
 
     if status == "Failed":
         sys.exit(1)
@@ -310,7 +321,4 @@ def main():
 
 
 if __name__ == '__main__':
-    try:
-        main()
-    except Exception as errout:
-        print(errout)
+    main()

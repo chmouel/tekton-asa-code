@@ -7,3 +7,7 @@ spec:
   params:
     - name: github_json
       value: $(body)
+    - name: installation_id
+      value: $(body.installation.id)
+    - name: application_id
+      value: "81262"
