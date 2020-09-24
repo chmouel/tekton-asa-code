@@ -1,13 +1,16 @@
 #!/bin/bash
 # Configure this to your own route
-PUBLIC_ROUTE_HOSTNAME=${PUBLIC_ROUTE_HOSTNAME:-tektonic.apps.chmouel.devcluster.openshift.com}
+PUBLIC_ROUTE_HOSTNAME=${PUBLIC_ROUTE_HOSTNAME:-tektonic.apps.tekton.openshift.chmouel.com}
 
 GITHUB_SECRET=${GITHUB_SECRET:-"$(git config --get github.oauth-token)"}
-SERVICE=el-tknaac-listener-interceptor
-TARGET_NAMESPACE=tknaac
+GITHUB_APP_PRIVATE_KEY=${GITHUB_APP_PRIVATE_KEY:-./tmp/github.app.key}
+SERVICE=el-tekton-asa-code-listener-interceptor
+TARGET_NAMESPACE=tekton-asa-code
 SERVICE_ACCOUNT=tkn-aac-sa
 OC_BIN=${OC_BIN:-oc}
 set -e
+
+EXTERNAL_TASKS="https://raw.githubusercontent.com/chmouel/catalog/add-github-app-token/task/github-app-token/0.1/github-app-token.yaml"
 
 TMPFILE=$(mktemp /tmp/.mm.XXXXXX)
 clean() { rm -f ${TMPFILE}; }
@@ -59,10 +62,10 @@ function waitfor() {
 function openshift_expose_service () {
 	local s=${1}
     local n=${2}
-    ${OC_BIN} delete route ${s} >/dev/null || true
+    ${OC_BIN} delete route -n ${TARGET_NAMESPACE} ${s} >/dev/null || true
     [[ -n ${n} ]] && n="--hostname=${n}"
-	${OC_BIN} expose service ${s} ${n} && \
-        ${OC_BIN} apply -f <(${OC_BIN} get route ${s}  -o json |jq -r '.spec |= . + {tls: {"insecureEdgeTerminationPolicy": "Redirect", "termination": "edge"}}') >/dev/null && \
+	${OC_BIN} expose service -n ${TARGET_NAMESPACE} ${s} ${n} && \
+        ${OC_BIN} apply -n ${TARGET_NAMESPACE} -f <(${OC_BIN} get route ${s}  -o json |jq -r '.spec |= . + {tls: {"insecureEdgeTerminationPolicy": "Redirect", "termination": "edge"}}') >/dev/null && \
         echo "https://$(${OC_BIN} get route ${s} -o jsonpath='{.spec.host}')"
 }
 
@@ -71,7 +74,7 @@ function create_secret() {
     local literal=${2}
     [[ -n ${recreate} ]] && ${OC_BIN} delete secret ${s}
     ${OC_BIN} -n ${TARGET_NAMESPACE} get secret ${s} >/dev/null 2>/dev/null || \
-        ${OC_BIN} -n ${TARGET_NAMESPACE} create secret generic ${s} --from-literal ${literal}
+        ${OC_BIN} -n ${TARGET_NAMESPACE} create secret generic ${s} --from-literal "${literal}"
 }
 
 function give_cluster_admin() {
@@ -89,7 +92,7 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: tkaac-cluster-role-binding
+  name: tekton-asa-code-clusterrole-bind
   namespace: ${TARGET_NAMESPACE}
 subjects:
   - kind: ServiceAccount
@@ -131,11 +134,15 @@ for i in tasks/*/*.yaml;do
 	k <(tkn_template ${i})
 done
 
-k triggers/*yaml
+k triggers/*yaml pipeline/*.yaml
 
-create_secret github token=${GITHUB_SECRET}
+for i in ${EXTERNAL_TASKS};do
+    k ${i}
+done
+
+
+create_secret github-app-secret private.key="$(cat ${GITHUB_APP_PRIVATE_KEY})"
 give_cluster_admin
-
 waitfor service/${SERVICE}
 
 openshift_expose_service ${SERVICE} ${PUBLIC_ROUTE_HOSTNAME}

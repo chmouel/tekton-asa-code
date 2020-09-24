@@ -2,7 +2,7 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: EventListener
 metadata:
-  name: tknaac-listener-interceptor
+  name: tekton-asa-code-listener-interceptor
 spec:
   serviceAccountName: tekton-triggers-github-sa
   triggers:
@@ -12,8 +12,8 @@ spec:
             eventTypes:
               - pull_request
         - cel:
-            filter: "body.action in ['opened', 'synchronize', 'reopened']"
+            filter: "body.action in ['opened', 'synchronize'] && 'installation' in body"
       bindings:
-        - ref: tknaac-bindings
+        - ref: tekton-asa-code-bindings
       template:
-        name: tknaac-template
+        name: tekton-asa-code-template

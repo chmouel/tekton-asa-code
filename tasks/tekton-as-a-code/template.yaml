@@ -1,13 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: tekton-as-a-code
-  labels:
-    app.kubernetes.io/version: "0.1"
-  annotations:
-    tekton.dev/pipelines.minVersion: "0.12.1"
-    tekton.dev/tags: github
-    tekton.dev/displayName: "github"
+  name: tekton-asa-code
 spec:
   description: >-
     This task will take a PR and checks which files are contained in there.
@@ -16,31 +10,19 @@ spec:
     files are contained.
 
   params:
-  - name: github_host_url
-    description: |
-      The GitHub host, adjust this if you run a GitHub enteprise.
-    default: "api.github.com"
-    type: string
-
-  - name: api_path_prefix
-    description: |
-      The API path prefix, GitHub Enterprise has a prefix e.g. /api/v3
-    default: ""
-    type: string
-
   - name: github_json
     type: string
     description: the full json received from json
+
+  - name: github_token
+    type: string
+    description: the github token used for github operation
+
   steps:
     - name: apply-and-launch
       env:
         - name: PYTHONUNBUFFERED
           value: "true"
-        - name: GITHUBTOKEN
-          valueFrom:
-            secretKeyRef:
-              name: github
-              key: token
       image: quay.io/chmouel/tekton-as-a-code:latest
       script: |
       ## INSERT script.py

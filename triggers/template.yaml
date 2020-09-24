@@ -2,19 +2,31 @@
 apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
-  name: tknaac-template
+  name: tekton-asa-code-template
 spec:
   params:
+    - name: installation_id
+    - name: application_id
     - name: github_json
   resourcetemplates:
     - apiVersion: tekton.dev/v1beta1
-      kind: TaskRun
+      kind: PipelineRun
       metadata:
         generateName: tekton-as-a-code-run-
+        labels:
+          tekton.dev/pipeline: tekton-as-a-code
       spec:
-        taskRef:
-          name: tekton-as-a-code
-        params:
-          - name: github_json
-            value: $(tt.params.github_json)
         serviceAccountName: tkn-aac-sa
+        params:
+        - name: application_id
+          value: $(tt.params.application_id)
+        - name: installation_id
+          value: $(tt.params.installation_id)
+        - name: github_json
+          value: $(tt.params.github_json)
+        pipelineRef:
+          name: tekton-as-a-code
+        workspaces:
+        - name: secrets
+          secret:
+            secretName: github-app-secret

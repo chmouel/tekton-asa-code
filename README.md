@@ -3,6 +3,8 @@
 <img src="https://raw.githubusercontent.com/chmouel/tekton-asa-code/master/doc/flow.png" alt="alt text" width="75%" height="75%">
 
 
+#  Todo this now uses a GitHUB APP, let's redo documentation later
+
 ## INSTALL
 
 Use the `deploy.sh` script.
@@ -30,7 +32,7 @@ which would say, install the git-clone task version 0.1 from the official catalo
 
 https://raw.githubusercontent.com/tektoncd/catalog/master/task/git-clone/0.1/git-clone.yaml
 
-When there is a new PR, tekton-as-code will create new namespaces and apply all the object in there, and try to get the latest pipelinerun ran in that new namespace and exposes it into the github PR as comment,
+When there is a new PR, tekton-asa-code will create new namespaces and apply all the object in there, and try to get the latest pipelinerun ran in that new namespace and exposes it into the github PR as comment,
 
 It will shows you a link to the openshift console url to follow the PR if that's available
 
@@ -40,6 +42,8 @@ It wil let you know if it has succeedd or not, and if there is failure it will t
 
 * cluster-admin permission, we are creating a new namespace everytime and needs to some pipeline/task and other stuff in there, we are currently using cluster-admin for simplicity but hopefully we have ideas to leverage the operator code to apply automatically the right rights the same way we do with the `pipeline` serviceaccount.
 * if tekton-as-run python script has failure it doesn't report back properly.
+* Fall back nicely if there is no tekton directory in repo.
+* Handle failures properly when there is errors.
 
 ## IDEAS
 
