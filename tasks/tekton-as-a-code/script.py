@@ -25,6 +25,28 @@ CATALOGS = {
 }
 
 
+def github_check_set_status(repository_full_name, check_run_id, target_url,
+                            conclusion, output):
+    body = {
+        "name": 'tekton-asa-code',
+        "status": "completed",
+        'conclusion': conclusion,
+        'completed_at': datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        'output': output
+    }
+    if target_url:
+        body["details_url"] = target_url
+
+    output = gh_request(
+        "PATCH",
+        f"https://{GITHUB_HOST_URL}/repos/{repository_full_name}/check-runs/{check_run_id}",
+        headers={
+            "Accept": "application/vnd.github.antiope-preview+json"
+        },
+        body=body).read().decode()
+    return output
+
+
 # pylint: disable=unnecessary-pass
 class CouldNotFindConfigKeyException(Exception):
     """Raise an exception when we cannot find the key string in json"""
@@ -187,6 +209,18 @@ def main():
 
     # Exit if there is not tekton directory
     if not os.path.exists("./tekton"):
+        # Set status as pending
+        output = github_check_set_status(
+            get_key('repository.full_name', jeez),
+            check_run_json['id'],
+            "https://tenor.com/search/sad-cat-gifs",
+            conclusion="neutral",
+            output={
+                "title": "Tekton as a code",
+                "summary": "Skipping this check 🤷🏻‍♀️",
+                "text": "No tekton directoy has been found 😿"
+            })
+        print("No tekton directoy has been found 😿")
         sys.exit(0)
 
     cmd = (
@@ -236,9 +270,19 @@ def main():
                 try:
                     url_retrieved, _ = urllib.request.urlretrieve(line)
                 except urllib.error.HTTPError as http_error:
-                    print(
-                        f"Cannot retrieve remote task {line} as specified in install.map: {http_error}"
-                    )
+                    msg = f"Cannot retrieve remote task {line} as specified in install.map: {http_error}"
+                    print(msg)
+                    github_check_set_status(get_key('repository.full_name',
+                                                    jeez),
+                                            check_run_json['id'],
+                                            "",
+                                            conclusion="failure",
+                                            output={
+                                                "title": "Tekton as a code",
+                                                "summary":
+                                                f"Cannot find remote task 💣",
+                                                "text": msg,
+                                            })
                     sys.exit(1)
                 kapply(url_retrieved, jeez, namespace)
             elif os.path.exists(f"{checked_repo}/tekton/{line}"):
@@ -281,27 +325,15 @@ def main():
 
 """
     # Set status as pending
-    output = gh_request(
-        "PATCH",
-        f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/check-runs/{check_run_json['id']}",
-        headers={
-            "Accept": "application/vnd.github.antiope-preview+json"
-        },
-        body={
-            "name": 'tekton-asa-code',
-            "details_url": target_url,
-            "status": "completed",
-            'conclusion': (status.lower() == 'failed' and 'failure'
-                           or 'success'),
-            'completed_at':
-            datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
-            'output': {
-                "title":
-                "Tekton has code report",
-                "summary":
-                f"CI has **{status}** {status_emoji}",
-                "text":
-                f"""
+    github_check_set_status(
+        get_key('repository.full_name', jeez), check_run_json['id'],
+        target_url, (status.lower() == 'failed' and 'failure' or 'success'), {
+            "title":
+            "Tekton has code report",
+            "summary":
+            f"CI has **{status}** {status_emoji}",
+            "text":
+            f"""
 
 {get_errors(output)}
 {pipelinerun_output}
@@ -314,9 +346,7 @@ def main():
 </details>
 
 """
-            }
-        }).read().decode()
-
+        })
     if status == "Failed":
         sys.exit(1)
 
