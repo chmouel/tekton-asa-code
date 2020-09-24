@@ -184,6 +184,11 @@ def main():
             print(exec_init.stderr.decode())
 
     os.chdir(checked_repo)
+
+    # Exit if there is not tekton directory
+    if not os.path.exists("./tekton"):
+        sys.exit(0)
+
     cmd = (
         f"git fetch https://{get_key('repository.owner.login', jeez)}:{GITHUB_TOKEN}"
         f"@{get_key('repository.html_url', jeez).replace('https://', '')} {get_key('check_suite.head_sha', jeez)}"
