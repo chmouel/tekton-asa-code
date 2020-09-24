@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # coding=utf8
+"""
+Tekton as a CODE: Main script
+"""
 import datetime
 import http.client
 import io
@@ -14,7 +17,6 @@ import tempfile
 import time
 import urllib.parse
 import urllib.request
-"""Main script for tekton as a code"""
 
 GITHUB_HOST_URL = "api.github.com"
 GITHUB_TOKEN = """$(params.github_token)"""
@@ -27,6 +29,9 @@ CATALOGS = {
 
 def github_check_set_status(repository_full_name, check_run_id, target_url,
                             conclusion, output):
+    """
+    Set status on the GitHUB Check
+    """
     body = {
         "name": 'tekton-asa-code',
         "status": "completed",
@@ -111,8 +116,7 @@ def get_key(key, jeez, error=True):
             if error:
                 raise CouldNotFindConfigKeyException(
                     f"Could not find key {key} in json while parsing file")
-            else:
-                return
+            return ""
         curr = curr[k]
     if not isinstance(curr, str):
         curr = str(curr)
@@ -145,10 +149,11 @@ def kapply(yaml_file, jeez, parameters_extras, namespace, name=None):
     def tpl_apply(param):
         if param in parameters_extras:
             return parameters_extras[param]
-        elif get_key(param, jeez, error=False):
+
+        if get_key(param, jeez, error=False):
             return get_key(param, jeez)
-        else:
-            return '{{%s}}' % (param)
+
+        return '{{%s}}' % (param)
 
     if not name:
         name = yaml_file
@@ -307,7 +312,7 @@ def main():
                                             output={
                                                 "title": "Tekton as a code",
                                                 "summary":
-                                                f"Cannot find remote task 💣",
+                                                "Cannot find remote task 💣",
                                                 "text": msg,
                                             })
                     sys.exit(1)
