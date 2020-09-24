@@ -190,7 +190,7 @@ def main():
         'repo_owner': repo_owner_login,
     }
 
-    namespace = f"pull-{head_sha}-{random_str}"
+    namespace = f"pull-{head_sha[:4]}-{random_str}"
 
     target_url = ""
     openshift_console_url = execute(
@@ -200,7 +200,7 @@ def main():
     if openshift_console_url.returncode == 0:
         target_url = f"https://{openshift_console_url.stdout.decode()}/k8s/ns/{namespace}/tekton.dev~v1beta1~PipelineRun/"
 
-    # Set status as pending
+        # Set status as pending
     check_run_json = github_request(
         "POST",
         # Not posting the pull request full_name which is the fork but where the
@@ -258,6 +258,10 @@ def main():
     execute(f"kubectl create ns {namespace}",
             "Cannot create a temporary namespace")
     print(f"Namespace {namespace} has been created")
+
+    # Apply label!
+    execute(
+        'kubectl label namespace {namespace} generated-by="tekton-asa-code"')
 
     if os.path.exists(f"{checked_repo}/tekton/install.map"):
         print(f"Processing install.map: {checked_repo}/tekton/install.map")
@@ -352,6 +356,7 @@ def main():
 </details>
 
 """
+
     # Set status as pending
     github_check_set_status(
         get_key('repository.full_name', jeez), check_run_json['id'],
