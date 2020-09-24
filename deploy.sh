@@ -1,6 +1,6 @@
 #!/bin/bash
 # Configure this to your own route
-PUBLIC_ROUTE_HOSTNAME=${PUBLIC_ROUTE_HOSTNAME:-tektonic.apps.chmouel.devcluster.openshift.com}
+PUBLIC_ROUTE_HOSTNAME=${PUBLIC_ROUTE_HOSTNAME:-tektonic.apps.tekton.openshift.chmouel.com}
 
 GITHUB_SECRET=${GITHUB_SECRET:-"$(git config --get github.oauth-token)"}
 GITHUB_APP_PRIVATE_KEY=${GITHUB_APP_PRIVATE_KEY:-./tmp/github.app.key}
