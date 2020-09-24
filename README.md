@@ -3,6 +3,8 @@
 <img src="https://raw.githubusercontent.com/chmouel/tekton-asa-code/master/doc/flow.png" alt="alt text" width="75%" height="75%">
 
 
+#  Todo this now uses a GitHUB APP, let's redo documentation later
+
 ## INSTALL
 
 Use the `deploy.sh` script.
