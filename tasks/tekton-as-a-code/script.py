@@ -139,15 +139,23 @@ Errors detected :
 """
 
 
-def kapply(yaml_file, jeez, namespace):
+def kapply(yaml_file, jeez, parameters_extras, namespace, name=None):
     """Apply kubernetes yaml template in a namespace with simple transformations
     from a dict"""
+    def tpl_apply(param):
+        if param in parameters_extras:
+            return parameters_extras[param]
+        elif get_key(param, jeez, error=False):
+            return get_key(param, jeez)
+        else:
+            return '{{%s}}' % (param)
 
-    print(f"Processing {yaml_file} in {namespace}")
+    if not name:
+        name = yaml_file
+    print(f"Processing {name} in {namespace}")
     tmpfile = tempfile.NamedTemporaryFile(delete=False).name
     open(tmpfile, 'w').write(
-        re.sub(r"\{\{([_a-zA-Z0-9\.]*)\}\}",
-               lambda m: get_key(m.group(1), jeez),
+        re.sub(r"\{\{([_a-zA-Z0-9\.]*)\}\}", lambda m: tpl_apply(m.group(1)),
                open(yaml_file).read()))
     execute(
         f"kubectl apply -f {tmpfile} -n {namespace}",
@@ -174,6 +182,13 @@ def main():
     repo_full_name = get_key('pull_request.head.repo.full_name', jeez)
     repo_owner_login = get_key('pull_request.head.repo.owner.login', jeez)
     repo_html_url = get_key('pull_request.head.repo.html_url', jeez)
+
+    # Extras template parameters to add aside of the stuff from json
+    parameters_extras = {
+        'revision': head_sha,
+        'repo_url': repo_html_url,
+        'repo_owner': repo_owner_login,
+    }
 
     namespace = f"pull-{head_sha}-{random_str}"
 
@@ -203,8 +218,6 @@ def main():
             datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
         }).read().decode()
     check_run_json = json.loads(check_run_json)
-    print(check_run_json)
-
     if not os.path.exists(checked_repo):
         os.makedirs(checked_repo)
         os.chdir(checked_repo)
@@ -294,9 +307,14 @@ def main():
                                                 "text": msg,
                                             })
                     sys.exit(1)
-                kapply(url_retrieved, jeez, namespace)
+                kapply(url_retrieved,
+                       jeez,
+                       parameters_extras,
+                       namespace,
+                       name=line)
             elif os.path.exists(f"{checked_repo}/tekton/{line}"):
-                kapply(f"{checked_repo}/tekton/{line}", jeez, namespace)
+                kapply(f"{checked_repo}/tekton/{line}", jeez,
+                       parameters_extras, namespace)
             else:
                 print(
                     f"The file {line} specified in install.map is not found in tekton repository"
@@ -305,7 +323,7 @@ def main():
         for filename in os.listdir(os.path.join(checked_repo, "tekton")):
             if not filename.endswith(".yaml"):
                 continue
-            kapply(filename, jeez, namespace)
+            kapply(filename, jeez, parameters_extras, namespace)
 
     time.sleep(2)
 
