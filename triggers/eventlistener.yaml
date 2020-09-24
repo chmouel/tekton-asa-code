@@ -10,9 +10,9 @@ spec:
       interceptors:
         - github:
             eventTypes:
-              - check_suite
+              - pull_request
         - cel:
-            filter: "body.action in ['requested'] && 'installation' in body"
+            filter: "body.action in ['opened', 'synchronize'] && 'installation' in body"
       bindings:
         - ref: tekton-asa-code-bindings
       template:

@@ -37,7 +37,7 @@ def github_check_set_status(repository_full_name, check_run_id, target_url,
     if target_url:
         body["details_url"] = target_url
 
-    output = gh_request(
+    output = github_request(
         "PATCH",
         f"https://{GITHUB_HOST_URL}/repos/{repository_full_name}/check-runs/{check_run_id}",
         headers={
@@ -84,7 +84,7 @@ def stream(command, filename, check_error=""):
         sys.stdout.write(reader.read().decode())
 
 
-def gh_request(method, url, headers=None, body=None):
+def github_request(method, url, headers=None, body=None):
     """Execute a request to the GitHUB API, handling redirect"""
     if not headers:
         headers = {}
@@ -99,17 +99,20 @@ def gh_request(method, url, headers=None, body=None):
     conn.request(method, url_parsed.path, body=body, headers=headers)
     response = conn.getresponse()
     if response.status == 301:
-        return gh_request(method, response.headers["Location"])
+        return github_request(method, response.headers["Location"])
     return response
 
 
-def get_key(key, jeez):
+def get_key(key, jeez, error=True):
     """Get key as a string like foo.bar.blah in dict => [foo][bar][blah] """
     curr = jeez
     for k in key.split("."):
         if k not in curr:
-            raise CouldNotFindConfigKeyException(
-                f"Could not find key {key} in json while parsing file")
+            if error:
+                raise CouldNotFindConfigKeyException(
+                    f"Could not find key {key} in json while parsing file")
+            else:
+                return
         curr = curr[k]
     if not isinstance(curr, str):
         curr = str(curr)
@@ -165,10 +168,14 @@ def main():
         print("Cannot find a github_json param")
         sys.exit(1)
     jeez = json.loads(param)
-    # issue_url = f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/issues/{get_key('number', jeez)}"
     random_str = ''.join(
         random.choices(string.ascii_letters + string.digits, k=4)).lower()
-    namespace = f"pull-{get_key('check_suite.head_sha', jeez)[:4]}-{random_str}"
+    head_sha = get_key('pull_request.head.sha', jeez)
+    repo_full_name = get_key('pull_request.head.repo.full_name', jeez)
+    repo_owner_login = get_key('pull_request.head.repo.owner.login', jeez)
+    repo_html_url = get_key('pull_request.head.repo.html_url', jeez)
+
+    namespace = f"pull-{head_sha}-{random_str}"
 
     target_url = ""
     openshift_console_url = execute(
@@ -179,8 +186,10 @@ def main():
         target_url = f"https://{openshift_console_url.stdout.decode()}/k8s/ns/{namespace}/tekton.dev~v1beta1~PipelineRun/"
 
     # Set status as pending
-    check_run_json = gh_request(
+    check_run_json = github_request(
         "POST",
+        # Not posting the pull request full_name which is the fork but where the
+        # pr happen.
         f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/check-runs",
         headers={
             "Accept": "application/vnd.github.antiope-preview+json"
@@ -189,11 +198,12 @@ def main():
             "name": 'tekton-asa-code',
             "details_url": target_url,
             "status": "in_progress",
-            'head_sha': jeez['check_suite']['head_sha'],
+            'head_sha': head_sha,
             'started_at':
             datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
         }).read().decode()
     check_run_json = json.loads(check_run_json)
+    print(check_run_json)
 
     if not os.path.exists(checked_repo):
         os.makedirs(checked_repo)
@@ -206,6 +216,15 @@ def main():
             print(exec_init.stderr.decode())
 
     os.chdir(checked_repo)
+
+    cmd = (f"git fetch https://{repo_owner_login}:{GITHUB_TOKEN}"
+           f"@{repo_html_url.replace('https://', '')} {head_sha}")
+    execute(
+        cmd, "Error checking out the GitHUB repo %s to the branch %s" %
+        (repo_html_url, head_sha))
+
+    execute("git checkout -qf FETCH_HEAD;",
+            "Error resetting git repository to FETCH_HEAD")
 
     # Exit if there is not tekton directory
     if not os.path.exists("./tekton"):
@@ -223,25 +242,17 @@ def main():
         print("No tekton directoy has been found 😿")
         sys.exit(0)
 
-    cmd = (
-        f"git fetch https://{get_key('repository.owner.login', jeez)}:{GITHUB_TOKEN}"
-        f"@{get_key('repository.html_url', jeez).replace('https://', '')} {get_key('check_suite.head_sha', jeez)}"
-    )
-    execute(
-        cmd, "Error checking out the GitHUB repo %s to the branch %s" %
-        (get_key('repository.html_url',
-                 jeez), get_key('check_suite.head_sha', jeez)))
-
-    execute("git checkout -qf FETCH_HEAD;",
-            "Error resetting git repository to FETCH_HEAD")
-
     execute(f"kubectl create ns {namespace}",
             "Cannot create a temporary namespace")
     print(f"Namespace {namespace} has been created")
 
     if os.path.exists(f"{checked_repo}/tekton/install.map"):
+        print(f"Processing install.map: {checked_repo}/tekton/install.map")
         for line in open(f"{checked_repo}/tekton/install.map"):
             line = line.strip()
+            if not line:
+                continue
+
             if line.startswith("#"):
                 continue
 
@@ -272,8 +283,7 @@ def main():
                 except urllib.error.HTTPError as http_error:
                     msg = f"Cannot retrieve remote task {line} as specified in install.map: {http_error}"
                     print(msg)
-                    github_check_set_status(get_key('repository.full_name',
-                                                    jeez),
+                    github_check_set_status(repo_full_name,
                                             check_run_json['id'],
                                             "",
                                             conclusion="failure",
