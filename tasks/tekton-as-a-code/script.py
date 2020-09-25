@@ -183,19 +183,20 @@ def main():
     jeez = json.loads(param)
     random_str = ''.join(
         random.choices(string.ascii_letters + string.digits, k=4)).lower()
-    head_sha = get_key('pull_request.head.sha', jeez)
-    repo_full_name = get_key('pull_request.head.repo.full_name', jeez)
-    repo_owner_login = get_key('pull_request.head.repo.owner.login', jeez)
-    repo_html_url = get_key('pull_request.head.repo.html_url', jeez)
+    pull_request_sha = get_key('pull_request.head.sha', jeez)
+    pull_request_number = get_key('pull_request.number', jeez)
+    repo_full_name = get_key('repository.full_name', jeez)
+    repo_owner_login = get_key('repository.owner.login', jeez)
+    repo_html_url = get_key('repository.html_url', jeez)
 
     # Extras template parameters to add aside of the stuff from json
     parameters_extras = {
-        'revision': head_sha,
+        'revision': pull_request_sha,
         'repo_url': repo_html_url,
         'repo_owner': repo_owner_login,
     }
 
-    namespace = f"pull-{head_sha[:4]}-{random_str}"
+    namespace = f"pull-{pull_request_sha[:4]}-{random_str}"
 
     target_url = ""
     openshift_console_url = execute(
@@ -210,7 +211,7 @@ def main():
         "POST",
         # Not posting the pull request full_name which is the fork but where the
         # pr happen.
-        f"https://{GITHUB_HOST_URL}/repos/{get_key('repository.full_name', jeez)}/check-runs",
+        f"https://{GITHUB_HOST_URL}/repos/{repo_full_name}/check-runs",
         headers={
             "Accept": "application/vnd.github.antiope-preview+json"
         },
@@ -218,7 +219,7 @@ def main():
             "name": 'tekton-asa-code',
             "details_url": target_url,
             "status": "in_progress",
-            'head_sha': head_sha,
+            'head_sha': pull_request_sha,
             'started_at':
             datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
         }).read().decode()
@@ -235,14 +236,15 @@ def main():
 
     os.chdir(checked_repo)
 
-    cmd = (f"git fetch https://{repo_owner_login}:{GITHUB_TOKEN}"
-           f"@{repo_html_url.replace('https://', '')} {head_sha}")
-    execute(
-        cmd, "Error checking out the GitHUB repo %s to the branch %s" %
-        (repo_html_url, head_sha))
-
-    execute("git checkout -qf FETCH_HEAD;",
-            "Error resetting git repository to FETCH_HEAD")
+    cmds = [
+        f"git remote add origin https://{repo_owner_login}:{GITHUB_TOKEN}@{repo_html_url.replace('https://', '')}",
+        f"git fetch origin refs/pull/{pull_request_number}/head",
+        f"git reset --hard {pull_request_sha}"
+    ]
+    for cmd in cmds:
+        execute(
+            cmd, "Error checking out the GitHUB repo %s to the branch %s" %
+            (repo_html_url, pull_request_sha))
 
     # Exit if there is not tekton directory
     if not os.path.exists("./tekton"):
@@ -266,7 +268,7 @@ def main():
 
     # Apply label!
     execute(
-        'kubectl label namespace {namespace} generated-by="tekton-asa-code"')
+        f'kubectl label namespace {namespace} generated-by="tekton-asa-code"')
 
     if os.path.exists(f"{checked_repo}/tekton/install.map"):
         print(f"Processing install.map: {checked_repo}/tekton/install.map")
@@ -364,8 +366,8 @@ def main():
 
     # Set status as pending
     github_check_set_status(
-        get_key('repository.full_name', jeez), check_run_json['id'],
-        target_url, (status.lower() == 'failed' and 'failure' or 'success'), {
+        repo_full_name, check_run_json['id'], target_url,
+        (status.lower() == 'failed' and 'failure' or 'success'), {
             "title":
             "Tekton has code report",
             "summary":
