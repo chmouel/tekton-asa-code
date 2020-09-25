@@ -1,9 +1,9 @@
 #!/bin/bash
 # Configure this to your own route
 PUBLIC_ROUTE_HOSTNAME=${PUBLIC_ROUTE_HOSTNAME:-tektonic.apps.tekton.openshift.chmouel.com}
-
-GITHUB_SECRET=${GITHUB_SECRET:-"$(git config --get github.oauth-token)"}
 GITHUB_APP_PRIVATE_KEY=${GITHUB_APP_PRIVATE_KEY:-./tmp/github.app.key}
+GITHUB_APP_ID=${GITHUB_APP_ID:-"81262"}
+
 SERVICE=el-tekton-asa-code-listener-interceptor
 TARGET_NAMESPACE=tekton-asa-code
 SERVICE_ACCOUNT=tkn-aac-sa
@@ -38,6 +38,10 @@ function k() {
         [[ -n ${recreate} ]] && {
             ${OC_BIN} -n ${TARGET_NAMESPACE} delete -f ${file}
         }
+        if [[ "$(basename ${file})" == bindings.yaml ]];then
+            sed "s/{{application_id}}/\"${GITHUB_APP_ID}\"/" ${file} > ${TMPFILE}
+            file=${TMPFILE}
+        fi
         ${OC_BIN} -n ${TARGET_NAMESPACE} apply -f ${file}
     done
 }

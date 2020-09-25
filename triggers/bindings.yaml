@@ -10,4 +10,4 @@ spec:
     - name: installation_id
       value: $(body.installation.id)
     - name: application_id
-      value: "81262"
+      value: {{application_id}}
