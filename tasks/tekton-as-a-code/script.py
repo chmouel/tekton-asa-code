@@ -3,6 +3,7 @@
 """
 Tekton as a CODE: Main script
 """
+
 import datetime
 import http.client
 import io
@@ -15,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import traceback
 import urllib.parse
 import urllib.request
 
@@ -25,6 +27,9 @@ CATALOGS = {
     'official':
     'https://raw.githubusercontent.com/tektoncd/catalog/master/task',
 }
+
+CHECK_RUN_ID = None
+REPO_FULL_NAME = None
 
 
 def github_check_set_status(repository_full_name, check_run_id, target_url,
@@ -170,6 +175,11 @@ def kapply(yaml_file, jeez, parameters_extras, namespace, name=None):
 
 def main():
     """main function"""
+    # This will get better when we rewrite all of this with objects and such...
+    # wildly using global like when I was a teenager back in the 80s writting
+    # locomotive basic
+    # pylint: disable=global-statement
+    global CHECK_RUN_ID, REPO_FULL_NAME
     checked_repo = "/tmp/repository"
 
     # # Testing
@@ -185,7 +195,7 @@ def main():
         random.choices(string.ascii_letters + string.digits, k=4)).lower()
     pull_request_sha = get_key('pull_request.head.sha', jeez)
     pull_request_number = get_key('pull_request.number', jeez)
-    repo_full_name = get_key('repository.full_name', jeez)
+    REPO_FULL_NAME = get_key('repository.full_name', jeez)
     repo_owner_login = get_key('repository.owner.login', jeez)
     repo_html_url = get_key('repository.html_url', jeez)
 
@@ -206,12 +216,12 @@ def main():
     if openshift_console_url.returncode == 0:
         target_url = f"https://{openshift_console_url.stdout.decode()}/k8s/ns/{namespace}/tekton.dev~v1beta1~PipelineRun/"
 
-        # Set status as pending
+    # Set status as pending
     check_run_json = github_request(
         "POST",
         # Not posting the pull request full_name which is the fork but where the
         # pr happen.
-        f"https://{GITHUB_HOST_URL}/repos/{repo_full_name}/check-runs",
+        f"https://{GITHUB_HOST_URL}/repos/{REPO_FULL_NAME}/check-runs",
         headers={
             "Accept": "application/vnd.github.antiope-preview+json"
         },
@@ -224,6 +234,8 @@ def main():
             datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
         }).read().decode()
     check_run_json = json.loads(check_run_json)
+    CHECK_RUN_ID = check_run_json['id']
+
     if not os.path.exists(checked_repo):
         os.makedirs(checked_repo)
         os.chdir(checked_repo)
@@ -251,7 +263,7 @@ def main():
         # Set status as pending
         output = github_check_set_status(
             get_key('repository.full_name', jeez),
-            check_run_json['id'],
+            CHECK_RUN_ID,
             "https://tenor.com/search/sad-cat-gifs",
             conclusion="neutral",
             output={
@@ -307,7 +319,7 @@ def main():
                 except urllib.error.HTTPError as http_error:
                     msg = f"Cannot retrieve remote task {line} as specified in install.map: {http_error}"
                     print(msg)
-                    github_check_set_status(repo_full_name,
+                    github_check_set_status(REPO_FULL_NAME,
                                             check_run_json['id'],
                                             "",
                                             conclusion="failure",
@@ -366,7 +378,7 @@ def main():
 
     # Set status as pending
     github_check_set_status(
-        repo_full_name,
+        REPO_FULL_NAME,
         check_run_json['id'],
         # Only set target_url which goest to the namespace in case of failure,
         # since we delete the namespace in case of success.
@@ -401,4 +413,21 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception:
+        exc_type, exc_value, exc_tb = sys.exc_info()
+        tb = traceback.format_exception(exc_type, exc_value, exc_tb)
+        print(" ".join(tb))
+        if CHECK_RUN_ID:
+            github_check_set_status(REPO_FULL_NAME,
+                                    CHECK_RUN_ID,
+                                    "https://tenor.com/search/sad-cat-gifs",
+                                    conclusion="failure",
+                                    output={
+                                        "title": "Tekton as a code",
+                                        "summary":
+                                        "Tekton asa code has failed 💣",
+                                        "text": " ".join(tb)
+                                    })
+        sys.exit(1)
