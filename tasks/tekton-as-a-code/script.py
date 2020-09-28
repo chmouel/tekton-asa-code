@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 # coding=utf8
-"""
-Tekton as a CODE: Main script
-"""
 import datetime
 import http.client
 import io
@@ -15,8 +12,12 @@ import subprocess
 import sys
 import tempfile
 import time
+import traceback
 import urllib.parse
 import urllib.request
+"""
+Tekton as a CODE: Main script
+"""
 
 GITHUB_HOST_URL = "api.github.com"
 GITHUB_TOKEN = """$(params.github_token)"""
@@ -25,6 +26,9 @@ CATALOGS = {
     'official':
     'https://raw.githubusercontent.com/tektoncd/catalog/master/task',
 }
+
+check_run_id = None
+repo_full_name = None
 
 
 def github_check_set_status(repository_full_name, check_run_id, target_url,
@@ -170,6 +174,10 @@ def kapply(yaml_file, jeez, parameters_extras, namespace, name=None):
 
 def main():
     """main function"""
+    # This will get better when we rewrite all of this with objects and such...
+    # wildly using global like when I was a teenager back in the 80s writting
+    # locomotive basic
+    global check_run_id, repo_full_name
     checked_repo = "/tmp/repository"
 
     # # Testing
@@ -206,7 +214,7 @@ def main():
     if openshift_console_url.returncode == 0:
         target_url = f"https://{openshift_console_url.stdout.decode()}/k8s/ns/{namespace}/tekton.dev~v1beta1~PipelineRun/"
 
-        # Set status as pending
+    # Set status as pending
     check_run_json = github_request(
         "POST",
         # Not posting the pull request full_name which is the fork but where the
@@ -224,6 +232,8 @@ def main():
             datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
         }).read().decode()
     check_run_json = json.loads(check_run_json)
+    check_run_id = check_run_json['id']
+
     if not os.path.exists(checked_repo):
         os.makedirs(checked_repo)
         os.chdir(checked_repo)
@@ -251,7 +261,7 @@ def main():
         # Set status as pending
         output = github_check_set_status(
             get_key('repository.full_name', jeez),
-            check_run_json['id'],
+            check_run_id,
             "https://tenor.com/search/sad-cat-gifs",
             conclusion="neutral",
             output={
@@ -401,4 +411,21 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception:
+        exc_type, exc_value, exc_tb = sys.exc_info()
+        tb = traceback.format_exception(exc_type, exc_value, exc_tb)
+        print(" ".join(tb))
+        if check_run_id:
+            github_check_set_status(repo_full_name,
+                                    check_run_id,
+                                    "https://tenor.com/search/sad-cat-gifs",
+                                    conclusion="failure",
+                                    output={
+                                        "title": "Tekton as a code",
+                                        "summary":
+                                        "Tekton asa code has failed 💣",
+                                        "text": " ".join(tb)
+                                    })
+        sys.exit(1)
