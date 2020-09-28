@@ -366,8 +366,13 @@ def main():
 
     # Set status as pending
     github_check_set_status(
-        repo_full_name, check_run_json['id'], target_url,
-        (status.lower() == 'failed' and 'failure' or 'success'), {
+        repo_full_name,
+        check_run_json['id'],
+        # Only set target_url which goest to the namespace in case of failure,
+        # since we delete the namespace in case of success.
+        (status.lower() == 'failed' and target_url or ''),
+        (status.lower() == 'failed' and 'failure' or 'success'),
+        {
             "title":
             "Tekton has code report",
             "summary":
