@@ -428,6 +428,7 @@ if __name__ == '__main__':
                                         "title": "Tekton as a code",
                                         "summary":
                                         "Tekton asa code has failed 💣",
-                                        "text": " ".join(tb)
+                                        "text":
+                                        f'<pre>{"<br/>".join(tb)}</pre>'
                                     })
         sys.exit(1)
