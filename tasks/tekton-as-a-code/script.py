@@ -26,41 +26,47 @@ GITHUB_TOKEN = """$(params.github_token)"""
 TEKTON_ASA_CODE_DIR = os.environ.get("TEKTON_ASA_CODE_DIR", ".tekton")
 
 CATALOGS = {
-    'official': 'tektoncd/catalog',
+    "official": "tektoncd/catalog",
 }
 
 CHECK_RUN_ID = None
 REPO_FULL_NAME = None
 
 
-def github_check_set_status(repository_full_name, check_run_id, target_url,
-                            conclusion, output):
+def github_check_set_status(
+    repository_full_name, check_run_id, target_url, conclusion, output
+):
     """
     Set status on the GitHUB Check
     """
+
     body = {
-        "name": 'tekton-asa-code',
+        "name": "tekton-asa-code",
         "status": "completed",
-        'conclusion': conclusion,
-        'completed_at': datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
-        'output': output
+        "conclusion": conclusion,
+        "completed_at": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "output": output,
     }
     if target_url:
         body["details_url"] = target_url
 
-    output = github_request(
-        "PATCH",
-        f"https://{GITHUB_HOST_URL}/repos/{repository_full_name}/check-runs/{check_run_id}",
-        headers={
-            "Accept": "application/vnd.github.antiope-preview+json"
-        },
-        body=body).read().decode()
+    output = (
+        github_request(
+            "PATCH",
+            f"https://{GITHUB_HOST_URL}/repos/{repository_full_name}/check-runs/{check_run_id}",
+            headers={"Accept": "application/vnd.github.antiope-preview+json"},
+            body=body,
+        )
+        .read()
+        .decode()
+    )
     return output
 
 
 # pylint: disable=unnecessary-pass
 class CouldNotFindConfigKeyException(Exception):
     """Raise an exception when we cannot find the key string in json"""
+
     pass
 
 
@@ -68,9 +74,9 @@ def execute(command, check_error=""):
     """Execute commmand"""
     result = ""
     try:
-        result = subprocess.run(['/bin/sh', '-c', command],
-                                stdout=subprocess.PIPE,
-                                check=True)
+        result = subprocess.run(
+            ["/bin/sh", "-c", command], stdout=subprocess.PIPE, check=True
+        )
     except subprocess.CalledProcessError as exception:
         if check_error:
             raise exception
@@ -80,8 +86,7 @@ def execute(command, check_error=""):
 # https://stackoverflow.com/a/18422264
 def stream(command, filename, check_error=""):
     """Stream command"""
-    with io.open(filename, 'wb') as writer, io.open(filename, 'rb',
-                                                    1) as reader:
+    with io.open(filename, "wb") as writer, io.open(filename, "rb", 1) as reader:
         try:
             process = subprocess.Popen(command.split(" "), stdout=writer)
         except subprocess.CalledProcessError as exception:
@@ -99,10 +104,12 @@ def github_request(method, url, headers=None, body=None, params=None):
     """Execute a request to the GitHUB API, handling redirect"""
     if not headers:
         headers = {}
-    headers.update({
-        "User-Agent": "TektonCD, the peaceful cat",
-        "Authorization": "Bearer " + GITHUB_TOKEN,
-    })
+    headers.update(
+        {
+            "User-Agent": "TektonCD, the peaceful cat",
+            "Authorization": "Bearer " + GITHUB_TOKEN,
+        }
+    )
 
     url_parsed = urllib.parse.urlparse(url)
     url_path = url_parsed.path
@@ -125,7 +132,8 @@ def get_key(key, jeez, error=True):
         if k not in curr:
             if error:
                 raise CouldNotFindConfigKeyException(
-                    f"Could not find key {key} in json while parsing file")
+                    f"Could not find key {key} in json while parsing file"
+                )
             return ""
         curr = curr[k]
     if not isinstance(curr, str):
@@ -136,9 +144,8 @@ def get_key(key, jeez, error=True):
 def get_errors(text):
     """ Get all errors coming from """
     errorstrings = r"(error|fail(ed)?)"
-    errorre = re.compile("^(.*%s.*)$" % (errorstrings),
-                         re.IGNORECASE | re.MULTILINE)
-    ret = ''
+    errorre = re.compile("^(.*%s.*)$" % (errorstrings), re.IGNORECASE | re.MULTILINE)
+    ret = ""
     for i in errorre.findall(text):
         i = re.sub(errorstrings, r"**\1**", i[0], flags=re.IGNORECASE)
         ret += f" * <code>{i}</code>\n"
@@ -159,21 +166,21 @@ def get_task_latest_version(repository, task):
         github_request(
             "GET",
             f"https://api.github.com/repos/{repository}/git/trees/master",
-            params={
-                'recursive': 'true',
-            }))
+            params={"recursive": "true",},
+        )
+    )
     version = ("0.0", None)
-    for tree in catalog['tree']:
-        path = tree['path']
+    for tree in catalog["tree"]:
+        path = tree["path"]
         if path.startswith(f"task/{task}") and path.endswith(f"{task}.yaml"):
             splitted = path.split("/")
-            if pkg_resources.parse_version(
-                    splitted[2]) > pkg_resources.parse_version(version[0]):
-                version = (path.split("/")[2], tree['url'])
+            if pkg_resources.parse_version(splitted[2]) > pkg_resources.parse_version(
+                version[0]
+            ):
+                version = (path.split("/")[2], tree["url"])
 
     if not version[1]:
-        raise Exception(
-            "I could not find a task in '{repository}' for '{task}' ")
+        raise Exception("I could not find a task in '{repository}' for '{task}' ")
 
     print(f"Task {task} in {repository} latest version is {version[0]}")
 
@@ -183,6 +190,7 @@ def get_task_latest_version(repository, task):
 def kapply(yaml_file, jeez, parameters_extras, namespace, name=None):
     """Apply kubernetes yaml template in a namespace with simple transformations
     from a dict"""
+
     def tpl_apply(param):
         if param in parameters_extras:
             return parameters_extras[param]
@@ -190,18 +198,23 @@ def kapply(yaml_file, jeez, parameters_extras, namespace, name=None):
         if get_key(param, jeez, error=False):
             return get_key(param, jeez)
 
-        return '{{%s}}' % (param)
+        return "{{%s}}" % (param)
 
     if not name:
         name = yaml_file
     print(f"Processing {name} in {namespace}")
     tmpfile = tempfile.NamedTemporaryFile(delete=False).name
-    open(tmpfile, 'w').write(
-        re.sub(r"\{\{([_a-zA-Z0-9\.]*)\}\}", lambda m: tpl_apply(m.group(1)),
-               open(yaml_file).read()))
+    open(tmpfile, "w").write(
+        re.sub(
+            r"\{\{([_a-zA-Z0-9\.]*)\}\}",
+            lambda m: tpl_apply(m.group(1)),
+            open(yaml_file).read(),
+        )
+    )
     execute(
         f"kubectl apply -f {tmpfile} -n {namespace}",
-        "Cannot apply {tmpfile} in {namespace} with {string(transformations)}")
+        "Cannot apply {tmpfile} in {namespace} with {string(transformations)}",
+    )
     os.remove(tmpfile)
 
 
@@ -215,24 +228,26 @@ def main():
     checked_repo = "/tmp/repository"
 
     param = """$(params.github_json)""".replace(
-        "\n", " ")  # TODO: why is it that json lib bugs on newline
+        "\n", " "
+    )  # TODO: why is it that json lib bugs on newline
     if not param:
         print("Cannot find a github_json param")
         sys.exit(1)
     jeez = json.loads(param)
-    random_str = ''.join(
-        random.choices(string.ascii_letters + string.digits, k=2)).lower()
-    pull_request_sha = get_key('pull_request.head.sha', jeez)
-    pull_request_number = get_key('pull_request.number', jeez)
-    REPO_FULL_NAME = get_key('repository.full_name', jeez)
-    repo_owner_login = get_key('repository.owner.login', jeez)
-    repo_html_url = get_key('repository.html_url', jeez)
+    random_str = "".join(
+        random.choices(string.ascii_letters + string.digits, k=2)
+    ).lower()
+    pull_request_sha = get_key("pull_request.head.sha", jeez)
+    pull_request_number = get_key("pull_request.number", jeez)
+    REPO_FULL_NAME = get_key("repository.full_name", jeez)
+    repo_owner_login = get_key("repository.owner.login", jeez)
+    repo_html_url = get_key("repository.html_url", jeez)
 
     # Extras template parameters to add aside of the stuff from json
     parameters_extras = {
-        'revision': pull_request_sha,
-        'repo_url': repo_html_url,
-        'repo_owner': repo_owner_login,
+        "revision": pull_request_sha,
+        "repo_url": repo_html_url,
+        "repo_owner": repo_owner_login,
     }
 
     namespace = f"pull-{pull_request_number}-{pull_request_sha[:5]}-{random_str}"
@@ -240,30 +255,33 @@ def main():
     target_url = ""
     openshift_console_url = execute(
         "kubectl get route -n openshift-console console -o jsonpath='{.spec.host}'",
-        check_error="cannot openshift-console route")
+        check_error="cannot openshift-console route",
+    )
 
     if openshift_console_url.returncode == 0:
         target_url = f"https://{openshift_console_url.stdout.decode()}/k8s/ns/{namespace}/tekton.dev~v1beta1~PipelineRun/"
 
     # Set status as pending
-    check_run_json = github_request(
-        "POST",
-        # Not posting the pull request full_name which is the fork but where the
-        # pr happen.
-        f"https://{GITHUB_HOST_URL}/repos/{REPO_FULL_NAME}/check-runs",
-        headers={
-            "Accept": "application/vnd.github.antiope-preview+json"
-        },
-        body={
-            "name": 'tekton-asa-code',
-            "details_url": target_url,
-            "status": "in_progress",
-            'head_sha': pull_request_sha,
-            'started_at':
-            datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
-        }).read().decode()
+    check_run_json = (
+        github_request(
+            "POST",
+            # Not posting the pull request full_name which is the fork but where the
+            # pr happen.
+            f"https://{GITHUB_HOST_URL}/repos/{REPO_FULL_NAME}/check-runs",
+            headers={"Accept": "application/vnd.github.antiope-preview+json"},
+            body={
+                "name": "tekton-asa-code",
+                "details_url": target_url,
+                "status": "in_progress",
+                "head_sha": pull_request_sha,
+                "started_at": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            },
+        )
+        .read()
+        .decode()
+    )
     check_run_json = json.loads(check_run_json)
-    CHECK_RUN_ID = check_run_json['id']
+    CHECK_RUN_ID = check_run_json["id"]
 
     if not os.path.exists(checked_repo):
         os.makedirs(checked_repo)
@@ -280,34 +298,33 @@ def main():
     cmds = [
         f"git remote add origin https://{repo_owner_login}:{GITHUB_TOKEN}@{repo_html_url.replace('https://', '')}",
         f"git fetch origin refs/pull/{pull_request_number}/head",
-        f"git reset --hard {pull_request_sha}"
+        f"git reset --hard {pull_request_sha}",
     ]
     for cmd in cmds:
         execute(
-            cmd, "Error checking out the GitHUB repo %s to the branch %s" %
-            (repo_html_url, pull_request_sha))
+            cmd,
+            "Error checking out the GitHUB repo %s to the branch %s"
+            % (repo_html_url, pull_request_sha),
+        )
 
     # Exit if there is not tekton directory
     if not os.path.exists(TEKTON_ASA_CODE_DIR):
         # Set status as pending
         output = github_check_set_status(
-            get_key('repository.full_name', jeez),
+            get_key("repository.full_name", jeez),
             CHECK_RUN_ID,
             "https://tenor.com/search/sad-cat-gifs",
             conclusion="neutral",
             output={
-                "title":
-                "Tekton as a code",
-                "summary":
-                "Skipping this check 🤷🏻‍♀️",
-                "text":
-                f"No tekton-asa-code directory '{TEKTON_ASA_CODE_DIR}' has been found in this repository 😿"
-            })
+                "title": "Tekton as a code",
+                "summary": "Skipping this check 🤷🏻‍♀️",
+                "text": f"No tekton-asa-code directory '{TEKTON_ASA_CODE_DIR}' has been found in this repository 😿",
+            },
+        )
         print("No tekton directoy has been found 😿")
         sys.exit(0)
 
-    execute(f"kubectl create ns {namespace}",
-            "Cannot create a temporary namespace")
+    execute(f"kubectl create ns {namespace}", "Cannot create a temporary namespace")
     print(f"Namespace {namespace} has been created")
 
     # Apply label!
@@ -331,7 +348,7 @@ def main():
 
             # remove inline comments
             if " #" in line:
-                line = line[:line.find(" #")]
+                line = line[: line.find(" #")]
 
             # if we have something like catalog:// do some magic :
             #
@@ -347,15 +364,14 @@ def main():
                     continue
 
                 if splitted[0] not in CATALOGS:
-                    print(
-                        f'The catalog "{splitted[0]}" in line: "{line}" is invalid'
-                    )
+                    print(f'The catalog "{splitted[0]}" in line: "{line}" is invalid')
                     continue
 
                 version = splitted[2]
                 if version == "latest":
-                    version = get_task_latest_version(CATALOGS[splitted[0]],
-                                                      splitted[1])
+                    version = get_task_latest_version(
+                        CATALOGS[splitted[0]], splitted[1]
+                    )
 
                 raw_url = f"https://raw.githubusercontent.com/{CATALOGS[splitted[0]]}/master/task"
                 line = f"{raw_url}/{splitted[1]}/{version}/{splitted[1]}.yaml"
@@ -367,26 +383,26 @@ def main():
                 except urllib.error.HTTPError as http_error:
                     msg = f"Cannot retrieve remote task {line} as specified in install.map: {http_error}"
                     print(msg)
-                    github_check_set_status(REPO_FULL_NAME,
-                                            check_run_json['id'],
-                                            "",
-                                            conclusion="failure",
-                                            output={
-                                                "title": "Tekton as a code",
-                                                "summary":
-                                                "Cannot find remote task 💣",
-                                                "text": msg,
-                                            })
+                    github_check_set_status(
+                        REPO_FULL_NAME,
+                        check_run_json["id"],
+                        "",
+                        conclusion="failure",
+                        output={
+                            "title": "Tekton as a code",
+                            "summary": "Cannot find remote task 💣",
+                            "text": msg,
+                        },
+                    )
                     sys.exit(1)
-                kapply(url_retrieved,
-                       jeez,
-                       parameters_extras,
-                       namespace,
-                       name=line)
-            elif os.path.exists(
-                    f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/{line}"):
-                kapply(f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/{line}", jeez,
-                       parameters_extras, namespace)
+                kapply(url_retrieved, jeez, parameters_extras, namespace, name=line)
+            elif os.path.exists(f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/{line}"):
+                kapply(
+                    f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/{line}",
+                    jeez,
+                    parameters_extras,
+                    namespace,
+                )
             elif os.path.exists(line):
                 kapply(line, jeez, parameters_extras, namespace)
             else:
@@ -394,8 +410,7 @@ def main():
                     f"The file {line} specified in install.map is not found in tekton repository"
                 )
     else:
-        for filename in os.listdir(
-                os.path.join(checked_repo, TEKTON_ASA_CODE_DIR)):
+        for filename in os.listdir(os.path.join(checked_repo, TEKTON_ASA_CODE_DIR)):
             if not filename.endswith(".yaml"):
                 continue
             kapply(filename, jeez, parameters_extras, namespace)
@@ -403,16 +418,18 @@ def main():
     time.sleep(2)
 
     output_file = tempfile.NamedTemporaryFile(delete=False).name
-    stream(f"tkn pr logs -n {namespace} --follow --last", output_file,
-           f"Cannot show Pipelinerun log in {namespace}")
+    stream(
+        f"tkn pr logs -n {namespace} --follow --last",
+        output_file,
+        f"Cannot show Pipelinerun log in {namespace}",
+    )
     output = open(output_file).read()
 
     # TODO: Need a better way!
-    describe_output = execute(
-        f"tkn pr describe -n {namespace} --last").stdout.decode()
+    describe_output = execute(f"tkn pr describe -n {namespace} --last").stdout.decode()
     regexp = re.compile(r"^STARTED\s*DURATION\s*STATUS\n(.*)$", re.MULTILINE)
     status = regexp.findall(describe_output)[0].split(" ")[-1]
-    status_emoji = "💥" if 'Failed' in status else '👌'
+    status_emoji = "💥" if "Failed" in status else "👌"
 
     print(describe_output)
 
@@ -431,18 +448,15 @@ def main():
     # Set status as pending
     github_check_set_status(
         REPO_FULL_NAME,
-        check_run_json['id'],
+        check_run_json["id"],
         # Only set target_url which goest to the namespace in case of failure,
         # since we delete the namespace in case of success.
-        (status.lower() == 'failed' and target_url or ''),
-        (status.lower() == 'failed' and 'failure' or 'success'),
+        (status.lower() == "failed" and target_url or ""),
+        (status.lower() == "failed" and "failure" or "success"),
         {
-            "title":
-            "Tekton has code report",
-            "summary":
-            f"CI has **{status}** {status_emoji}",
-            "text":
-            f"""
+            "title": "Tekton has code report",
+            "summary": f"CI has **{status}** {status_emoji}",
+            "text": f"""
 
 {get_errors(output)}
 {pipelinerun_output}
@@ -454,17 +468,20 @@ def main():
 ```
 </details>
 
-"""
-        })
+""",
+        },
+    )
     if status == "Failed":
         sys.exit(1)
 
     # Only delete if it succeed, keeping it for investigation
-    execute(f"kubectl delete ns {namespace}",
-            "Cannot delete temporary namespace {namespace}")
+    execute(
+        f"kubectl delete ns {namespace}",
+        "Cannot delete temporary namespace {namespace}",
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         main()
     except Exception:
@@ -472,15 +489,15 @@ if __name__ == '__main__':
         tb = traceback.format_exception(exc_type, exc_value, exc_tb)
         print(" ".join(tb))
         if CHECK_RUN_ID:
-            github_check_set_status(REPO_FULL_NAME,
-                                    CHECK_RUN_ID,
-                                    "https://tenor.com/search/sad-cat-gifs",
-                                    conclusion="failure",
-                                    output={
-                                        "title": "Tekton as a code",
-                                        "summary":
-                                        "Tekton asa code has failed 💣",
-                                        "text":
-                                        f'<pre>{"<br/>".join(tb)}</pre>'
-                                    })
+            github_check_set_status(
+                REPO_FULL_NAME,
+                CHECK_RUN_ID,
+                "https://tenor.com/search/sad-cat-gifs",
+                conclusion="failure",
+                output={
+                    "title": "Tekton as a code",
+                    "summary": "Tekton asa code has failed 💣",
+                    "text": f'<pre>{"<br/>".join(tb)}</pre>',
+                },
+            )
         sys.exit(1)
