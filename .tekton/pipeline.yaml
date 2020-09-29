@@ -49,6 +49,9 @@ spec:
       runAfter: [fetch]
       taskRef:
         name: black
+      params:
+        - name: args
+          value: ["."]
       workspaces:
         - name: shared-workspace
           workspace: source
