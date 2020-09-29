@@ -189,8 +189,6 @@ def main():
         print("Cannot find a github_json param")
         sys.exit(1)
     jeez = json.loads(param)
-    random_str = ''.join(
-        random.choices(string.ascii_letters + string.digits, k=4)).lower()
     pull_request_sha = get_key('pull_request.head.sha', jeez)
     pull_request_number = get_key('pull_request.number', jeez)
     REPO_FULL_NAME = get_key('repository.full_name', jeez)
@@ -204,7 +202,7 @@ def main():
         'repo_owner': repo_owner_login,
     }
 
-    namespace = f"pull-{pull_request_sha[:4]}-{random_str}"
+    namespace = f"pull-{pull_request_number}-{pull_request_sha[:5]}"
 
     target_url = ""
     openshift_console_url = execute(
