@@ -45,3 +45,10 @@ spec:
       workspaces:
         - name: source
           workspace: source
+    - name: python-black
+      runAfter: [fetch]
+      taskRef:
+        name: black
+      workspaces:
+        - name: shared-workspace
+          workspace: source
