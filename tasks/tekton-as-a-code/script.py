@@ -9,7 +9,9 @@ import http.client
 import io
 import json
 import os
+import random
 import re
+import string
 import subprocess
 import sys
 import tempfile
@@ -187,7 +189,10 @@ def main():
         print("Cannot find a github_json param")
         sys.exit(1)
     jeez = json.loads(param)
+    random_str = ''.join(
+        random.choices(string.ascii_letters + string.digits, k=2)).lower()
     pull_request_sha = get_key('pull_request.head.sha', jeez)
+    pull_request_url = get_key('pull_request.html_url', jeez)
     pull_request_number = get_key('pull_request.number', jeez)
     REPO_FULL_NAME = get_key('repository.full_name', jeez)
     repo_owner_login = get_key('repository.owner.login', jeez)
@@ -200,7 +205,7 @@ def main():
         'repo_owner': repo_owner_login,
     }
 
-    namespace = f"pull-{pull_request_number}-{pull_request_sha[:5]}"
+    namespace = f"pull-{pull_request_number}-{pull_request_sha[:5]}-{random_str}"
 
     target_url = ""
     openshift_console_url = execute(
@@ -277,8 +282,11 @@ def main():
 
     # Apply label!
     execute(
-        f'kubectl label namespace {namespace} generated-by="tekton-asa-code"')
-
+        f'kubectl label namespace {namespace} tekton.dev/generated-by="tekton-asa-code"'
+    )
+    execute(
+        f'kubectl label namespace {namespace} tekton.dev/pr="{pull_request_url}"'
+    )
     if os.path.exists(f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/install.map"):
         print(
             f"Processing install.map: {checked_repo}/{TEKTON_ASA_CODE_DIR}/install.map"
