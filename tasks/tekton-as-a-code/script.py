@@ -9,9 +9,7 @@ import http.client
 import io
 import json
 import os
-import random
 import re
-import string
 import subprocess
 import sys
 import tempfile
