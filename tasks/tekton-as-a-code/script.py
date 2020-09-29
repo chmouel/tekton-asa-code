@@ -22,6 +22,7 @@ import urllib.request
 
 GITHUB_HOST_URL = "api.github.com"
 GITHUB_TOKEN = """$(params.github_token)"""
+TEKTON_ASA_CODE_DIR = os.environ.get("TEKTON_ASA_CODE_DIR", ".tekton")
 
 CATALOGS = {
     'official':
@@ -182,9 +183,6 @@ def main():
     global CHECK_RUN_ID, REPO_FULL_NAME
     checked_repo = "/tmp/repository"
 
-    # # Testing
-    # jeez = json.load(
-    #     open(os.path.expanduser("~/tmp/tekton/apply-change-of-a-task/t.json")))
     param = """$(params.github_json)""".replace(
         "\n", " ")  # TODO: why is it that json lib bugs on newline
     if not param:
@@ -259,7 +257,7 @@ def main():
             (repo_html_url, pull_request_sha))
 
     # Exit if there is not tekton directory
-    if not os.path.exists("./tekton"):
+    if not os.path.exists(TEKTON_ASA_CODE_DIR):
         # Set status as pending
         output = github_check_set_status(
             get_key('repository.full_name', jeez),
@@ -267,9 +265,12 @@ def main():
             "https://tenor.com/search/sad-cat-gifs",
             conclusion="neutral",
             output={
-                "title": "Tekton as a code",
-                "summary": "Skipping this check 🤷🏻‍♀️",
-                "text": "No tekton directoy has been found 😿"
+                "title":
+                "Tekton as a code",
+                "summary":
+                "Skipping this check 🤷🏻‍♀️",
+                "text":
+                f"No tekton-asa-code directory '{TEKTON_ASA_CODE_DIR}' has been found in this repository 😿"
             })
         print("No tekton directoy has been found 😿")
         sys.exit(0)
@@ -282,9 +283,11 @@ def main():
     execute(
         f'kubectl label namespace {namespace} generated-by="tekton-asa-code"')
 
-    if os.path.exists(f"{checked_repo}/tekton/install.map"):
-        print(f"Processing install.map: {checked_repo}/tekton/install.map")
-        for line in open(f"{checked_repo}/tekton/install.map"):
+    if os.path.exists(f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/install.map"):
+        print(
+            f"Processing install.map: {checked_repo}/{TEKTON_ASA_CODE_DIR}/install.map"
+        )
+        for line in open(f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/install.map"):
             line = line.strip()
             if not line:
                 continue
@@ -335,15 +338,17 @@ def main():
                        parameters_extras,
                        namespace,
                        name=line)
-            elif os.path.exists(f"{checked_repo}/tekton/{line}"):
-                kapply(f"{checked_repo}/tekton/{line}", jeez,
+            elif os.path.exists(
+                    f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/{line}"):
+                kapply(f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/{line}", jeez,
                        parameters_extras, namespace)
             else:
                 print(
                     f"The file {line} specified in install.map is not found in tekton repository"
                 )
     else:
-        for filename in os.listdir(os.path.join(checked_repo, "tekton")):
+        for filename in os.listdir(
+                os.path.join(checked_repo, TEKTON_ASA_CODE_DIR)):
             if not filename.endswith(".yaml"):
                 continue
             kapply(filename, jeez, parameters_extras, namespace)
