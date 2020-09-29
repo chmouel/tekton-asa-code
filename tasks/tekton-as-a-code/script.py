@@ -3,7 +3,6 @@
 """
 Tekton as a CODE: Main script
 """
-
 import datetime
 import http.client
 import io
@@ -20,13 +19,14 @@ import traceback
 import urllib.parse
 import urllib.request
 
+import pkg_resources
+
 GITHUB_HOST_URL = "api.github.com"
 GITHUB_TOKEN = """$(params.github_token)"""
 TEKTON_ASA_CODE_DIR = os.environ.get("TEKTON_ASA_CODE_DIR", ".tekton")
 
 CATALOGS = {
-    'official':
-    'https://raw.githubusercontent.com/tektoncd/catalog/master/task',
+    'official': 'tektoncd/catalog',
 }
 
 CHECK_RUN_ID = None
@@ -95,7 +95,7 @@ def stream(command, filename, check_error=""):
         sys.stdout.write(reader.read().decode())
 
 
-def github_request(method, url, headers=None, body=None):
+def github_request(method, url, headers=None, body=None, params=None):
     """Execute a request to the GitHUB API, handling redirect"""
     if not headers:
         headers = {}
@@ -105,9 +105,13 @@ def github_request(method, url, headers=None, body=None):
     })
 
     url_parsed = urllib.parse.urlparse(url)
+    url_path = url_parsed.path
+    if params:
+        url_path += "?" + urllib.parse.urlencode(params)
+
     body = body and json.dumps(body)
     conn = http.client.HTTPSConnection(url_parsed.hostname)
-    conn.request(method, url_parsed.path, body=body, headers=headers)
+    conn.request(method, url_path, body=body, headers=headers)
     response = conn.getresponse()
     if response.status == 301:
         return github_request(method, response.headers["Location"])
@@ -147,6 +151,33 @@ Errors detected :
 {ret}
 
 """
+
+
+def get_task_latest_version(repository, task):
+    """Use the github api to retrieve the latest task verison from a repository"""
+    catalog = json.load(
+        github_request(
+            "GET",
+            f"https://api.github.com/repos/{repository}/git/trees/master",
+            params={
+                'recursive': 'true',
+            }))
+    version = ("0.0", None)
+    for tree in catalog['tree']:
+        path = tree['path']
+        if path.startswith(f"task/{task}") and path.endswith(f"{task}.yaml"):
+            splitted = path.split("/")
+            if pkg_resources.parse_version(
+                    splitted[2]) > pkg_resources.parse_version(version[0]):
+                version = (path.split("/")[2], tree['url'])
+
+    if not version[1]:
+        raise Exception(
+            "I could not find a task in '{repository}' for '{task}' ")
+
+    print(f"Task {task} in {repository} latest version is {version[0]}")
+
+    return version[0]
 
 
 def kapply(yaml_file, jeez, parameters_extras, namespace, name=None):
@@ -303,20 +334,31 @@ def main():
                 line = line[:line.find(" #")]
 
             # if we have something like catalog:// do some magic :
+            #
             # in: catalog://official:git-clone:0.1
             # out: https://raw.githubusercontent.com/tektoncd/catalog/master/task/git-clone/0.1/git-clone.yaml
+            #
+            # if we have the version finishing by latest we go query to the
+            # Github API which one is the latest task.
             if line.startswith("catalog://"):
                 splitted = line.replace("catalog://", "").split(":")
                 if len(splitted) != 3:
                     print(f'The line in install.map:"{line}" is invalid')
                     continue
+
                 if splitted[0] not in CATALOGS:
                     print(
                         f'The catalog "{splitted[0]}" in line: "{line}" is invalid'
                     )
                     continue
 
-                line = f"{CATALOGS[splitted[0]]}/{splitted[1]}/{splitted[2]}/{splitted[1]}.yaml"
+                version = splitted[2]
+                if version == "latest":
+                    version = get_task_latest_version(CATALOGS[splitted[0]],
+                                                      splitted[1])
+
+                raw_url = f"https://raw.githubusercontent.com/{CATALOGS[splitted[0]]}/master/task"
+                line = f"{raw_url}/{splitted[1]}/{version}/{splitted[1]}.yaml"
 
             # if we have a URL retrieve it (with GH token)
             if line.startswith("https://"):
@@ -345,6 +387,8 @@ def main():
                     f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/{line}"):
                 kapply(f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/{line}", jeez,
                        parameters_extras, namespace)
+            elif os.path.exists(line):
+                kapply(line, jeez, parameters_extras, namespace)
             else:
                 print(
                     f"The file {line} specified in install.map is not found in tekton repository"
