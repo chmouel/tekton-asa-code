@@ -192,7 +192,6 @@ def main():
     random_str = ''.join(
         random.choices(string.ascii_letters + string.digits, k=2)).lower()
     pull_request_sha = get_key('pull_request.head.sha', jeez)
-    pull_request_url = get_key('pull_request.html_url', jeez)
     pull_request_number = get_key('pull_request.number', jeez)
     REPO_FULL_NAME = get_key('repository.full_name', jeez)
     repo_owner_login = get_key('repository.owner.login', jeez)
@@ -285,7 +284,7 @@ def main():
         f'kubectl label namespace {namespace} tekton.dev/generated-by="tekton-asa-code"'
     )
     execute(
-        f'kubectl label namespace {namespace} tekton.dev/pr="{pull_request_url}"'
+        f'kubectl label namespace {namespace} tekton.dev/pr="{REPO_FULL_NAME.replace("/", "-")}-{pull_request_number}"'
     )
     if os.path.exists(f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/install.map"):
         print(
