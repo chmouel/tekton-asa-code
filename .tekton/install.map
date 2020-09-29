@@ -1,6 +1,6 @@
 # ORDER of installing all yaml files
-catalog://official:git-clone:0.1
-catalog://official:yaml-lint:0.1
-catalog://official:pylint:0.1
+catalog://official:git-clone:latest
+catalog://official:yaml-lint:latest
+catalog://official:pylint:latest
 pipeline.yaml
 run.yaml
