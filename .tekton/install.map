@@ -3,5 +3,6 @@ catalog://official:git-clone:latest
 catalog://official:yaml-lint:latest
 catalog://official:pylint:latest
 catalog://official:black:latest
+catalog://official:shellcheck:latest
 pipeline.yaml
 run.yaml
