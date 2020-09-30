@@ -111,6 +111,25 @@ catalog://official:yaml-lint:0.1
 
 ## INSTALL
 
+# Create a GitHub application
+
+Follow this Guide : 
+
+https://docs.github.com/en/free-pro-team@latest/developers/apps/creating-a-github-app
+
+- set the webhook URL to the `PUBLIC_ROUTE_HOSTNAME` as set below in the
+[deploy.sh](./deploy.sh) script
+- allow read and write on  Checks on code.
+- In repository permissions, allow read and write on "Checks"
+- In repository permissions, allow read and write on "Pull request"
+- In repository permissions, allow read and write on "Issues"
+- In organizatory permissions, allow read on "Members"
+- In Subscribe to events  checks "Pull Requests".
+- In Subscribe to events  checks "Pull Requests review".
+
+After creating the GitHub application you should get your `GITHUB_APP_ID` and
+your `GITHUB_APP_PRIVATE_KEY` and proceed to the deployment onto your cluster.
+
 Use the `deploy.sh` script.
 
 There is two environment variables that you need to set before running this
@@ -120,22 +139,38 @@ script :
 `GITHUB_APP_PRIVATE_KEY` - The path to your Github applicaiton private key.
 `PUBLIC_ROUTE_HOSTNAME` - This is your public route as published by the ingress controler or OpenShift route.
 
-You need to make sure to configure your GitHUB app to point the webhook URL to the `PUBLIC_ROUTE_HOSTNAME`
-
 You then run the `./deploy.sh` script and it will take care to creates everything.
 
 The user goes to your application ie:
 https://github.com/apps/my-app-tekton-as-a-code and installs it for her code
 repository. Tekton as a code should run right after creating a new PR.
 
+### Troubleshooting
+
+Usually you would first inspect Tekton's event listener to see if the GitHub
+Webhook has came thru.
+
+List the Pipelineruns in the `tekton-asa-code` namespace to see if pipelinerun has
+created.
+
+`tkn describe` and `tkn logs` them to investigate why they haven't run and not reported on the
+GitHub Pull request.
+
+There is a small shell script in this repo
+[`./misc/tkaac-status`](`./misc/tkaac-status`) that helps you keep an overview
+of all the pull requests, it's a bit like `tkn ls` output but with the pull
+request that it targets and looping over to catch the new stuff.
+
+A demo here : 
+
+[![Tekton aac status](https://asciinema.org/a/UtYEMplIgE4QaIkTGWV6oYLhg.svg)](https://asciinema.org/a/UtYEMplIgE4QaIkTGWV6oYLhg)
 
 ### Examples
 
-Tekton as a cde test itself, you can get the example of the pipeline it test
+Tekton as a code test itself, you can get the example of the pipeline it test
 from [here](https://github.com/chmouel/tekton-asa-code/tree/master/.tekton).
 
-A PR that shows, we had an issue, we added a new file and the pipeline took 
-this and applied it :
+An example of a PR, this shows a failure issue and then a success :
 
 https://github.com/chmouel/tekton-asa-code/pull/30
 
@@ -143,6 +178,9 @@ https://github.com/chmouel/tekton-asa-code/pull/30
 
 * This is very much GitHub oriented at the moment, but having another VCS
   supported should not be an issue (altho this would need some refactoring).
+* Breaks that big python script to reusable small tasks that chains together
+* Or at least breaks the python script to some proper python object based files
+  and add unit/functions tests and all.
 
 ### Limitations
 
@@ -159,6 +197,3 @@ https://github.com/chmouel/tekton-asa-code/pull/30
 ## IDEAS
 
 * move install.map over a yaml file, which looks less weird than install.map
-* breaks that big python script to reusable small tasks that chains together
-* Or at least breaks the python script to some proper python object based files
-  and add unit/functions tests and all.
