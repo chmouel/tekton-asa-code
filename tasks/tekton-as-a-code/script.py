@@ -41,7 +41,7 @@ def github_check_set_status(
     """
 
     body = {
-        "name": "tekton-asa-code",
+        "name": "Tekton CI",
         "status": "completed",
         "conclusion": conclusion,
         "completed_at": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -316,7 +316,7 @@ def main():
             "https://tenor.com/search/sad-cat-gifs",
             conclusion="neutral",
             output={
-                "title": "Tekton as a code",
+                "title": "CI Run: Skipped",
                 "summary": "Skipping this check 🤷🏻‍♀️",
                 "text": f"No tekton-asa-code directory '{TEKTON_ASA_CODE_DIR}' has been found in this repository 😿",
             },
@@ -389,7 +389,7 @@ def main():
                         "",
                         conclusion="failure",
                         output={
-                            "title": "Tekton as a code",
+                            "title": "CI Run: Failure",
                             "summary": "Cannot find remote task 💣",
                             "text": msg,
                         },
@@ -454,7 +454,7 @@ def main():
         (status.lower() == "failed" and target_url or ""),
         (status.lower() == "failed" and "failure" or "success"),
         {
-            "title": "Tekton has code report",
+            "title": "CI Run: Report",
             "summary": f"CI has **{status}** {status_emoji}",
             "text": f"""
 
@@ -495,7 +495,7 @@ if __name__ == "__main__":
                 "https://tenor.com/search/sad-cat-gifs",
                 conclusion="failure",
                 output={
-                    "title": "Tekton as a code",
+                    "title": "CI Run: Failure",
                     "summary": "Tekton asa code has failed 💣",
                     "text": f'<pre>{"<br/>".join(tb)}</pre>',
                 },
