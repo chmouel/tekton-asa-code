@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Configure this to your own route
 PUBLIC_ROUTE_HOSTNAME=${PUBLIC_ROUTE_HOSTNAME:-tektonic.apps.tekton.openshift.chmouel.com}
 GITHUB_APP_PRIVATE_KEY=${GITHUB_APP_PRIVATE_KEY:-./tmp/github.app.key}
@@ -111,22 +111,23 @@ EOF
 
 # Tasks templates https://blog.chmouel.com/2020/07/28/tekton-yaml-templates-and-script-feature/
 function tkn_template() {
-    local fname=${1:-template.yaml}
+    local fname F1 F2 scriptfile indentation spaces
+
+    fname=${1:-template.yaml}
     cat ${fname} > ${TMPFILE}
     cd $(dirname $(readlink -f ${fname}))
-    local oifs=${IFS}
-    IFS="
-"
 
-    for line in $(grep "## INSERT" $(basename ${fname}));do
-        local F2=$(<${TMPFILE})
+    grep "## INSERT" $(basename ${fname})|while read -r line;do
+        F2=$(<${TMPFILE})
 
-        local scriptfile=${line//## INSERT /}
+        scriptfile=${line//## INSERT /}
         scriptfile=${scriptfile//[ ]/}
+
         [[ -e ${scriptfile} ]] || { echo "Could not find ${scriptfile}"; continue ;}
-        local indentation="$(grep -B1 ${line} template.yaml|head -1|sed 's/^\([ ]*\).*/\1/')"
-        indentation="${indentation}    "
-        local F1=$(sed "s/^/${indentation}/" ${scriptfile})
+        indentation="$(grep -B1 "${line}" template.yaml|head -1|sed 's/^\([ ]*\).*/\1/')"
+        spaces="  "
+        indentation="${indentation}${spaces}"
+        F1=$(sed -e "1s/^/${spaces}/" -e "1n;s/^/${indentation}/" ${scriptfile})
         cat <(echo "${F2//${line}/$F1}") > ${TMPFILE}
     done
 

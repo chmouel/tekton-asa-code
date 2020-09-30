@@ -61,7 +61,7 @@ spec:
         name: shellcheck
       params:
         - name: args
-          value: ["-S", "error", "-s", "bash", "./deploy.sh"]
+          value: ["-s", "bash", "./deploy.sh"]
       workspaces:
         - name: shared-workspace
           workspace: source
