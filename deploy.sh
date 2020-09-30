@@ -3,6 +3,7 @@
 PUBLIC_ROUTE_HOSTNAME=${PUBLIC_ROUTE_HOSTNAME:-tektonic.apps.tekton.openshift.chmouel.com}
 GITHUB_APP_PRIVATE_KEY=${GITHUB_APP_PRIVATE_KEY:-./tmp/github.app.key}
 GITHUB_APP_ID=${GITHUB_APP_ID:-"81262"}
+GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET:-}
 
 SERVICE=el-tekton-asa-code-listener-interceptor
 TARGET_NAMESPACE=tekton-asa-code
@@ -32,6 +33,15 @@ done
 shift $((OPTIND-1))
 
 ${OC_BIN} get project ${TARGET_NAMESPACE} >/dev/null 2>/dev/null || ${OC_BIN} new-project ${TARGET_NAMESPACE} || true
+github_webhook_secret=$(kubectl -n ${TARGET_NAMESPACE} get secret github-webhook-secret -o jsonpath='{.data.token}' 2>/dev/null || true)
+
+if [[ -n ${github_webhook_secret} ]];then
+     github_webhook_secret=$(echo ${github_webhook_secret}|base64 --decode)
+else
+    github_webhook_secret=${GITHUB_WEBHOOK_SECRET:-$(openssl rand -hex 20|tr -d '\n')}
+    echo "Password generated is: ${github_webhook_secret}"
+    kubectl create secret generic github-webhook-secret --from-literal token="${github_webhook_secret}"
+fi
 
 function k() {
     for file in "$@";do
@@ -70,7 +80,7 @@ function openshift_expose_service () {
     [[ -n ${n} ]] && n="--hostname=${n}"
 	${OC_BIN} expose service -n ${TARGET_NAMESPACE} ${s} ${n} && \
         ${OC_BIN} apply -n ${TARGET_NAMESPACE} -f <(${OC_BIN} get route ${s}  -o json |jq -r '.spec |= . + {tls: {"insecureEdgeTerminationPolicy": "Redirect", "termination": "edge"}}') >/dev/null && \
-        echo "https://$(${OC_BIN} get route ${s} -o jsonpath='{.spec.host}')"
+        echo "Webhook URL: https://$(${OC_BIN} get route ${s} -o jsonpath='{.spec.host}')"
 }
 
 function create_secret() {
@@ -83,7 +93,6 @@ function create_secret() {
 
 function give_cluster_admin() {
     #TODO: not ideal
-    set -x
     cat <<EOF | ${OC_BIN} apply -f- -n${TARGET_NAMESPACE}
 ---
 apiVersion: v1
@@ -150,4 +159,7 @@ create_secret github-app-secret private.key="$(cat ${GITHUB_APP_PRIVATE_KEY})"
 give_cluster_admin
 waitfor service/${SERVICE}
 
+echo "-- Installtion has finished --"
+echo
 openshift_expose_service ${SERVICE} ${PUBLIC_ROUTE_HOSTNAME}
+echo "Webhook secret: ${github_webhook_secret}"
