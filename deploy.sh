@@ -34,7 +34,7 @@ shift $((OPTIND-1))
 ${OC_BIN} get project ${TARGET_NAMESPACE} >/dev/null 2>/dev/null || ${OC_BIN} new-project ${TARGET_NAMESPACE} || true
 
 function k() {
-    for file in $@;do
+    for file in "$@";do
         [[ -n ${recreate} ]] && {
             ${OC_BIN} -n ${TARGET_NAMESPACE} delete -f ${file}
         }
