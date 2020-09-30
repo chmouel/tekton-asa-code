@@ -135,6 +135,11 @@ repository. Tekton as a code should run right after creating a new PR.
 Tekton as a cde test itself, you can get the example of the pipeline it test
 from [here](https://github.com/chmouel/tekton-asa-code/tree/master/.tekton).
 
+A PR that shows, we had an issue, we added a new file and the pipeline took 
+this and applied it :
+
+https://github.com/chmouel/tekton-asa-code/pull/30
+
 ### TODO
 
 * This is very much GitHub oriented at the moment, but having another VCS
