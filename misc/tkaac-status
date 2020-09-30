@@ -1,0 +1,92 @@
+#!/bin/bash
+# jq, tkn, pip3 install --home arrow
+NAMESPACE="tekton-asa-code"
+TMPF=$(mktemp /tmp/.mm.XXXXXX)
+TMPF2=$(mktemp /tmp/.mm.XXXXXX)
+clean() { rm -f ${TMPF2} ${TMPF}; }
+trap clean EXIT
+
+function c() {
+    BOLD='\033[1m'
+    ITALIC='\033[3m'
+    UNDERLINE='\033[4m'
+    NONE='\033[00m'
+    RED='\033[01;31m'
+    GREEN='\033[01;32m'
+    YELLOW='\033[01;33m'
+    BLUE='\033[01;34m'
+
+    case $1 in
+		yellow)
+			color=${BOLD}${YELLOW}
+			;;
+		italic)
+			color=${ITALIC}
+			;;
+		underline)
+			color=${UNDERLINE}
+			;;
+        bold)
+            color=$BOLD
+            ;;
+        normal)
+            color=$NONE
+            ;;
+        green)
+            color=$BOLD$GREEN
+            ;;
+        blue)
+            color=$BOLD$BLUE
+            ;;
+        red)
+            color=$BOLD$RED
+            ;;
+        *)
+
+    esac
+    printf "%b" "${color}$2${NONE} "
+}
+
+IFS="
+"
+
+SEENS=()
+
+in_array() {
+    for i in "${SEENS[@]}"; do
+        if [[ "$i" = ${1} ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+printf  "%-30s%s\n" "$(c underline 'TIME AGO')"
+while :;do
+    for line in $(tkn pr -n ${NAMESPACE} ls --no-headers --limit=${1:-5});do
+	    pr=$(echo ${line}|awk '{print $1}'|tr -d '\n')
+	    status=$(echo ${line}|awk '{print $NF}'|tr -d '\n')
+	    kubectl get -n ${NAMESPACE} pr -o json ${pr} | tee ${TMPF2} | jq -r '.spec.params[] | select(.name == "github_json").value'|tr -d '\n'|tr -d ''|jq '.' > ${TMPF}
+	    timeago=$(jq .metadata.creationTimestamp ${TMPF2}|python3 -c 'import sys,arrow;print(arrow.get(sys.stdin.read()).humanize())'|sed 's/ago//')
+	    url=$(jq -r '.pull_request.html_url' ${TMPF})
+	    sha=$(jq -r '.pull_request.head.sha' ${TMPF}|cut -c1-4)
+	    loginuser=$(jq -r '.pull_request.user.login' ${TMPF})
+
+        in_array ${sha}${status} && { read -t 3 -n1 ;break ;}
+        
+        SEENS+=(${sha}${status})
+        
+	    case ${status} in 
+		    Succeeded)
+			    status=$(c green ${status})
+			    ;;
+		    Failed)
+			    status=$(c red ${status})
+			    ;;
+		    Running)
+			    status=$(c blue ${status})
+			    ;;
+	    esac	
+	    printf  "%-30s%s %-10s %s %s %-30s %s %s\n" "$(c yellow ${timeago})" "$(c none)"  ${loginuser} ${sha} ${pr} ${status} "$(c underline $url)"
+    done
+done
