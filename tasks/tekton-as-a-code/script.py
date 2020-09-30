@@ -83,6 +83,14 @@ def execute(command, check_error=""):
     return result
 
 
+def get_config():
+    """Try to grab the config for tekton-asa-code and parse it as dict"""
+    output = execute("kubectl get configmaps tekton-asa-code -o json 2>/dev/null",)
+    if output.returncode != 0:
+        return {}
+    return json.loads(output.stdout.decode())["data"]
+
+
 # https://stackoverflow.com/a/18422264
 def stream(command, filename, check_error=""):
     """Stream command"""
@@ -120,7 +128,7 @@ def github_request(method, url, headers=None, body=None, params=None):
     conn = http.client.HTTPSConnection(url_parsed.hostname)
     conn.request(method, url_path, body=body, headers=headers)
     response = conn.getresponse()
-    if response.status == 301:
+    if response.status == 302:
         return github_request(method, response.headers["Location"])
     return response
 
@@ -242,6 +250,7 @@ def main():
     REPO_FULL_NAME = get_key("repository.full_name", jeez)
     repo_owner_login = get_key("repository.owner.login", jeez)
     repo_html_url = get_key("repository.html_url", jeez)
+    pull_request_user_login = get_key("pull_request.user.login", jeez)
 
     # Extras template parameters to add aside of the stuff from json
     parameters_extras = {
@@ -282,6 +291,35 @@ def main():
     )
     check_run_json = json.loads(check_run_json)
     CHECK_RUN_ID = check_run_json["id"]
+    tkaac_config = get_config()
+
+    restrict_organization = tkaac_config.get("restrict_organization")
+
+    if restrict_organization:
+        print(
+            f"https://api.github.com/orgs/{restrict_organization}/members/{pull_request_user_login}"
+        )
+        print(GITHUB_TOKEN)
+        check_user_status = github_request(
+            "GET",
+            f"https://api.github.com/orgs/{restrict_organization}/members/{pull_request_user_login}",
+        ).status
+        if check_user_status != 204:
+            message = f"👮‍♂️ Cannot run CI since the user {pull_request_user_login} is not part of the organization {restrict_organization}"
+
+            output = github_check_set_status(
+                get_key("repository.full_name", jeez),
+                CHECK_RUN_ID,
+                "https://tenor.com/search/sad-cat-gifs",
+                conclusion="neutral",
+                output={
+                    "title": "CI Run: Skipped",
+                    "summary": "Skipping this check 🤷🏻‍♀️",
+                    "text": message,
+                },
+            )
+            print(message)
+            sys.exit(0)
 
     if not os.path.exists(checked_repo):
         os.makedirs(checked_repo)
