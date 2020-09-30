@@ -1,7 +1,7 @@
 pull_request_rules:
   - name: Automatic merge on approval
     conditions:
-      - status-success=tekton-asa-code
+      - status-success="Tekton CI"
       - label!=work-in-progress
     actions:
       merge:
