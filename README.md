@@ -11,51 +11,50 @@ alt="alt text" width="75%" height="75%">
 
 ## Description
 
-`Tekton as a code` is a project to let the user have a repository called
-`.tekton` in her code repository and have tekton using it while doing iterative
-devlopement over a pull request before code is merged.
+`Tekton as a code` allows user to do iterative development over a pull request
+before code is merged by having a `.tekton` directory in the code repository.
 
 ### Example
 
-1. Users have a source code that needs to be tested according to a set of
+1. User has source code that needs to be tested according to a set of
    different checks (i.e: golint/pylint/yamllint etc..)
-2. User add a `.tekton` directory with a pipeline referencing the checks.
-3. User submit a PR.
+2. User adds a `.tekton` directory with a pipeline referencing the checks.
+3. User submits a PR.
 4. Tekton as a code picks it up and apply the content of the `.tekton` directory.
-5. Tekton as a code post the results and set the status back on the PR.
+5. Tekton as a code posts the results and set the status back on the PR.
 
 ### Details
 
 Tekton as a code expect to be run from a GitHub application.
 
-When the user install the GitHub application on her repository, every time a PR
-get created or updated it will post a webhook notification to the tekton trigger
-event listenner to launch a tekton as a code pipeline.
+When the user installs the GitHub application in a code repository, every time a PR
+gets created or updated, it will post a webhook notification to the tekton trigger
+event listener that will launch a tekton as a code pipeline.
 
-The tekton as a code pipeline has two tasks, the first one is to retrieve a user
-token with the github app private key via the [github-app-token
+The tekton as a code pipeline has 2 tasks:
+- the first one is to retrieve a user token with the github app private key via the [github-app-token
 task](https://github.com/tektoncd/catalog/blob/master/task/github-app-token/0.1/)
 to be able to do operation on the behalf of the user.
 
-The second task that follows will launch the tekton-as-a-code main task.
+- The second task that follows will launch the tekton-as-a-code main task.
 
-The main task is a python script that act as a shim between the webhook input
-and posting back the results, it will performs the following actions :
+The main task is a python script that acts as a shim between the webhook input
+and posting back the results, it will perform the following actions :
 
 1. Parse the webhook json input.
 2. Create a [GitHub check
    run](https://docs.github.com/en/free-pro-team@latest/rest/reference/checks)
    to set the PR as "in progress".
-3. It will check out the GitHUB repository to the head SHA of the PR.
-4. It will create a temporary namespace.
-5. It will apply the content of the `.tekton` directory in the temporary namespace.
-6. It will get the logs of the latest pipeline run in the temporary namespace
+3. Check out the GitHUB repository to the head SHA of the PR.
+4. Create a temporary namespace.
+5. Apply the content of the `.tekton` directory in the temporary namespace.
+6. Get the logs of the latest pipeline run in the temporary namespace
    and stream it.
-7. It will detect if the run has been successfull or not and then postback to
+7. Detect if the run has been successfull or not and then postback to
    the GitHub PR.
 
-Moreover in step `5` when we apply the content of the `.tekton` directory it
-will detect if there is tags inside which looks like this `{{revision}}` or
+Moreover in step `5` when `Tekton as a code` applies the content of the `.tekton` directory 
+it detects if there is tags inside which looks like this `{{revision}}` or
 like this `{{repo_url}}` and parse it with the value that we have from the
 webhook json. It is possible in fact to access anything that came from the
 webhook json, for example to something like this :
