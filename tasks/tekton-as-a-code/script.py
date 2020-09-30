@@ -270,7 +270,7 @@ def main():
             f"https://{GITHUB_HOST_URL}/repos/{REPO_FULL_NAME}/check-runs",
             headers={"Accept": "application/vnd.github.antiope-preview+json"},
             body={
-                "name": "tekton-asa-code",
+                "name": "Tekton CI",
                 "details_url": target_url,
                 "status": "in_progress",
                 "head_sha": pull_request_sha,
