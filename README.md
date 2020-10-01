@@ -123,7 +123,7 @@ https://docs.github.com/en/free-pro-team@latest/developers/apps/creating-a-githu
 - In repository permissions, allow read and write on "Checks"
 - In repository permissions, allow read and write on "Pull request"
 - In repository permissions, allow read and write on "Issues"
-- In organization permissions, allow read on "Members"
+- In organizatory permissions, allow read on "Members"
 - In Subscribe to events  checks "Pull Requests".
 - In Subscribe to events  checks "Pull Requests review".
 
@@ -136,17 +136,10 @@ There is two environment variables that you need to set before running this
 script :
 
 `GITHUB_APP_ID` - your GitHub application ID
-`GITHUB_APP_PRIVATE_KEY` - The path to your Github application private key.
-`PUBLIC_ROUTE_HOSTNAME` - This is your public route as published by the ingress
-                          controller or OpenShift route.
+`GITHUB_APP_PRIVATE_KEY` - The path to your Github applicaiton private key.
+`PUBLIC_ROUTE_HOSTNAME` - This is your public route as published by the ingress controler or OpenShift route.
 
-You need to make sure to configure your GitHUB app to point the webhook URL to
-the `PUBLIC_ROUTE_HOSTNAME`
-
-You then run the `./deploy.sh` script and it will take care to creates
-everything. It will generate a webhook password as well and it will print at the
-end of the deployment, make sure you fill this up in the Github application
-webhook secret field.
+You then run the `./deploy.sh` script and it will take care to creates everything.
 
 The user goes to your application ie:
 https://github.com/apps/my-app-tekton-as-a-code and installs it for her code
@@ -154,20 +147,14 @@ repository. Tekton as a code should run right after creating a new PR.
 
 ### Troubleshooting
 
-Usually you would first inspect the trigger's eventlistener pod to see if the GitHub
-webhook has came thru.
+Usually you would first inspect Tekton's event listener to see if the GitHub
+Webhook has came thru.
 
 List the Pipelineruns in the `tekton-asa-code` namespace to see if pipelinerun has
 created.
 
 `tkn describe` and `tkn logs` them to investigate why they haven't run and not reported on the
 GitHub Pull request.
-
-If you get an error message looking like this :
-
-`,"msg":"payload signature check failed"`
-
-in the event listener pod, it means your github secret hasn't been set properly.
 
 There is a small shell script in this repo
 [`./misc/tkaac-status`](`./misc/tkaac-status`) that helps you keep an overview
@@ -201,7 +188,7 @@ https://github.com/chmouel/tekton-asa-code/pull/30
 
 ## ISSUES
 
-* cluster-admin permission, we are creating a new namespace every time and needs
+* cluster-admin permission, we are creating a new namespace everytime and needs
   to some pipeline/task and other stuff in there, we are currently using
   cluster-admin for simplicity but hopefully we have ideas to leverage the
   operator code to apply automatically the right rights the same way we do with
