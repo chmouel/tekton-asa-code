@@ -111,7 +111,7 @@ catalog://official:yaml-lint:0.1
 
 ## INSTALL
 
-# Create a GitHub application
+### Create a GitHub application
 
 Follow this Guide : 
 
@@ -152,6 +152,23 @@ The user goes to your application ie:
 https://github.com/apps/my-app-tekton-as-a-code and installs it for her code
 repository. Tekton as a code should run right after creating a new PR.
 
+### Configuration
+
+There is a limited configuration directive at this time but if you create a
+ConfigMap, the only directive is to be able to restrict tekton as a code
+execution to some users that are part of organization. For example if you want
+to restrict the pipelines execution to the `myorg` Github organization you
+create this configmap with the key `restrict_organization` and the value of the
+organization, i.e:
+
+```sh
+kubectl create configmap tekton-asa-code --from-literal=restrict_organization=myorg
+```
+
+and tekton as a code will restrict the execution of the pipeline to the users
+that are part of this organization.
+
+
 ### Troubleshooting
 
 Usually you would first inspect the trigger's eventlistener pod to see if the GitHub
@@ -178,7 +195,7 @@ A demo here :
 
 [![Tekton aac status](https://asciinema.org/a/UtYEMplIgE4QaIkTGWV6oYLhg.svg)](https://asciinema.org/a/UtYEMplIgE4QaIkTGWV6oYLhg)
 
-### Examples
+## Examples
 
 Tekton as a code test itself, you can get the example of the pipeline it test
 from [here](https://github.com/chmouel/tekton-asa-code/tree/master/.tekton).
@@ -187,7 +204,7 @@ An example of a PR, this shows a failure issue and then a success :
 
 https://github.com/chmouel/tekton-asa-code/pull/30
 
-### TODO
+## TODO
 
 * This is very much GitHub oriented at the moment, but having another VCS
   supported should not be an issue (altho this would need some refactoring).
