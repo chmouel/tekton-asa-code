@@ -11,7 +11,7 @@ SERVICE_ACCOUNT=tkn-aac-sa
 OC_BIN=${OC_BIN:-oc}
 set -e
 
-EXTERNAL_TASKS="https://raw.githubusercontent.com/chmouel/catalog/add-github-app-token/task/github-app-token/0.1/github-app-token.yaml"
+EXTERNAL_TASKS="https://raw.githubusercontent.com/tektoncd/catalog/master/task/github-app-token/0.1/github-app-token.yaml"
 
 TMPFILE=$(mktemp /tmp/.mm.XXXXXX)
 clean() { rm -f ${TMPFILE}; }
