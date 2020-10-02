@@ -154,12 +154,15 @@ repository. Tekton as a code should run right after creating a new PR.
 
 ### Configuration
 
-There is a limited configuration directive at this time but if you create a
-ConfigMap, the only directive is to be able to restrict tekton as a code
-execution to some users that are part of organization. For example if you want
-to restrict the pipelines execution to the `myorg` Github organization you
-create this configmap with the key `restrict_organization` and the value of the
-organization, i.e:
+There is a limited configuration interaction directive at this time but if you
+create a ConfigMap called `tekton-asa-code`, 
+
+With the `restrict_organization` key you are able to restrict the execution of
+tekton as a code if the submitted of the pull_request belong to that
+organization. For example if you want to restrict the pipelines execution to the
+`myorg` organization you create configmap with the key
+`restrict_organization` and the value of the organization, this would look like
+this from the command line :
 
 ```sh
 kubectl create configmap tekton-asa-code --from-literal=restrict_organization=myorg
@@ -168,13 +171,16 @@ kubectl create configmap tekton-asa-code --from-literal=restrict_organization=my
 and tekton as a code will restrict the execution of the pipeline to the users
 that are part of this organization.
 
+**TODO**: We awill be able to let a user of organization to issue a comment (ie:
+like */ok-to-tests* on prow) on a PR to let the it be tested even if the
+submitter is not part of that organization.
 
 ### Troubleshooting
 
 Usually you would first inspect the trigger's eventlistener pod to see if the GitHub
 webhook has came thru.
 
-List the Pipelineruns in the `tekton-asa-code` namespace to see if pipelinerun has
+List the **Pipelineruns** in the `tekton-asa-code` namespace to see if pipelinerun has
 created.
 
 `tkn describe` and `tkn logs` them to investigate why they haven't run and not reported on the
