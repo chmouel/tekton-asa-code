@@ -1,7 +1,6 @@
 # Tekton as a Code
 
 DO NOT FEAR THE   DRAGONS!
-BE READY FOR ICE CREAMS
 
 A PR based flow for Tekton.
 
