@@ -1,7 +1,5 @@
 # Tekton as a Code
 
-DO NOT FEAR THE   DRAGONS!
-
 A PR based flow for Tekton.
 
 ## Flow
