@@ -296,25 +296,22 @@ def main():
     restrict_organization = tkaac_config.get("restrict_organization")
 
     if restrict_organization:
-        print(
-            f"https://api.github.com/orgs/{restrict_organization}/members/{pull_request_user_login}"
-        )
-        print(GITHUB_TOKEN)
-        check_user_status = github_request(
-            "GET",
-            f"https://api.github.com/orgs/{restrict_organization}/members/{pull_request_user_login}",
-        ).status
-        if check_user_status != 204:
-            message = f"👮‍♂️ Cannot run CI since the user {pull_request_user_login} is not part of the organization {restrict_organization}"
+        url = f"https://api.github.com/orgs/{restrict_organization}/members"
+        check_user = json.loads(github_request("GET", url,).read().decode())
+        grab_user = [
+            user for user in check_user if user["login"] == pull_request_user_login
+        ]
+        if not grab_user:
+            message = f"👮‍♂️ Skipping running the CI since the user **{pull_request_user_login}** is not part of the organization **{restrict_organization}**"
 
             output = github_check_set_status(
                 get_key("repository.full_name", jeez),
                 CHECK_RUN_ID,
-                "https://tenor.com/search/sad-cat-gifs",
-                conclusion="neutral",
+                "https://tenor.com/search/police-gifs",
+                conclusion="cancelled",
                 output={
-                    "title": "CI Run: Skipped",
-                    "summary": "Skipping this check 🤷🏻‍♀️",
+                    "title": "CI Run: Denied",
+                    "summary": "Skipping checking this repository 🤷🏻‍♀️",
                     "text": message,
                 },
             )
