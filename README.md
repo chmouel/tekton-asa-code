@@ -148,9 +148,27 @@ everything. It will generate a webhook password as well and it will print at the
 end of the deployment, make sure you fill this up in the Github application
 webhook secret field.
 
+### Usage
+
 The user goes to your application ie:
 https://github.com/apps/my-app-tekton-as-a-code and installs it for her code
 repository. Tekton as a code should run right after creating a new PR.
+
+If the user submits a PR and tekton as a code has been restricted to only runs
+PR from a user from an organization which the user is not part of. A user of the
+organization can add the line `/tekton ok-to-test` in a comment of the PR and
+this will allows it. You can add other lines after or before, you just need one
+exact line matching the `/tekton ok-to-test` directive, i.e:
+
+```
+/tekton ok-to-test
+
+Thanks for submitting 👍🏼
+```
+
+**TODO**: Tekton as a code doesn't currently listen to comment events from
+github so after running the `/tekton ok-to-test`, the user needs to submit a new
+iteration of the PR to *rekick* the PR check.
 
 ### Configuration
 
@@ -170,10 +188,6 @@ kubectl create configmap tekton-asa-code --from-literal=restrict_organization=my
 
 and tekton as a code will restrict the execution of the pipeline to the users
 that are part of this organization.
-
-**TODO**: We awill be able to let a user of organization to issue a comment (ie:
-like */ok-to-tests* on prow) on a PR to let the it be tested even if the
-submitter is not part of that organization.
 
 ### Troubleshooting
 
