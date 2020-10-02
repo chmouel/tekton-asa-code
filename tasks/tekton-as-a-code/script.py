@@ -24,6 +24,7 @@ import pkg_resources
 GITHUB_HOST_URL = "api.github.com"
 GITHUB_TOKEN = """$(params.github_token)"""
 TEKTON_ASA_CODE_DIR = os.environ.get("TEKTON_ASA_CODE_DIR", ".tekton")
+COMMENT_ALLOWED_STRING = "/tekton ok-to-test"
 
 CATALOGS = {
     "official": "tektoncd/catalog",
@@ -226,6 +227,50 @@ def kapply(yaml_file, jeez, parameters_extras, namespace, name=None):
     os.remove(tmpfile)
 
 
+def check_restrict_organization(organization, pull_request_user_login, jeez):
+    """Check if a user is part of an organization an deny her, unless a approved
+      member leaves a /tekton ok-to-test comments"""
+    member_url = f"https://api.github.com/orgs/{organization}/members"
+    users_of_org = [
+        user["login"]
+        for user in json.loads(github_request("GET", member_url,).read().decode())
+    ]
+    user_part_of_org = [
+        user for user in users_of_org if user == pull_request_user_login
+    ]
+    if user_part_of_org:
+        return
+
+    member_url = f"https://api.github.com/orgs/{organization}/members"
+
+    comments_url = f"{get_key('pull_request.issue_url', jeez)}/comments"
+    comments_of_pr = json.loads(github_request("GET", comments_url,).read().decode())
+
+    # Not a oneline cause python-black is getting crazy
+    for comment in comments_of_pr:
+        # if the user is part of the organization that is allowed to launch test.
+        if comment["user"]["login"] in users_of_org:
+            # if we have the comment at the beginning of a comment line.
+            if COMMENT_ALLOWED_STRING in comment["body"].split("\r\n"):
+                print(f'PR has been allowed to be tested by {comment["user"]["login"]}')
+                return
+
+    message = f"👮‍♂️ Skipping running the CI since the user **{pull_request_user_login}** is not part of the organization **{organization}**"
+    github_check_set_status(
+        get_key("repository.full_name", jeez),
+        CHECK_RUN_ID,
+        "https://tenor.com/search/police-gifs",
+        conclusion="neutral",
+        output={
+            "title": "CI Run: Denied",
+            "summary": "Skipping checking this repository 🤷🏻‍♀️",
+            "text": message,
+        },
+    )
+    print(message)
+    sys.exit(0)
+
+
 def main():
     """main function"""
     # This will get better when we rewrite all of this with objects and such...
@@ -293,30 +338,9 @@ def main():
     CHECK_RUN_ID = check_run_json["id"]
     tkaac_config = get_config()
 
-    restrict_organization = tkaac_config.get("restrict_organization")
-
-    if restrict_organization:
-        url = f"https://api.github.com/orgs/{restrict_organization}/members"
-        check_user = json.loads(github_request("GET", url,).read().decode())
-        grab_user = [
-            user for user in check_user if user["login"] == pull_request_user_login
-        ]
-        if not grab_user:
-            message = f"👮‍♂️ Skipping running the CI since the user **{pull_request_user_login}** is not part of the organization **{restrict_organization}**"
-
-            output = github_check_set_status(
-                get_key("repository.full_name", jeez),
-                CHECK_RUN_ID,
-                "https://tenor.com/search/police-gifs",
-                conclusion="cancelled",
-                output={
-                    "title": "CI Run: Denied",
-                    "summary": "Skipping checking this repository 🤷🏻‍♀️",
-                    "text": message,
-                },
-            )
-            print(message)
-            sys.exit(0)
+    check_restrict_organization(
+        tkaac_config.get("restrict_organization"), pull_request_user_login, jeez,
+    )
 
     if not os.path.exists(checked_repo):
         os.makedirs(checked_repo)
