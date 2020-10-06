@@ -8,7 +8,18 @@ GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET:-}
 SERVICE=el-tekton-asa-code-listener-interceptor
 TARGET_NAMESPACE=tekton-asa-code
 SERVICE_ACCOUNT=tkn-aac-sa
-OC_BIN=${OC_BIN:-oc}
+if type -p oc >/dev/null 2>/dev/null;then
+    DEFAULT_KB=oc
+elif type -p kubectl >/dev/null 2>/dev/null;then
+    DEFAULT_KB=kubectl
+fi
+KB=${KUBECTL_BINARY:-${DEFAULT_KB}}
+
+if ! type -p ${KB} >/dev/null;then
+    echo "Couldn't find a ${DEFAULT_KB} in the path, please set the KB accordingly "
+    exit 1
+fi
+
 set -e
 
 EXTERNAL_TASKS="https://raw.githubusercontent.com/tektoncd/catalog/master/task/github-app-token/0.1/github-app-token.yaml"
@@ -32,7 +43,7 @@ while getopts "rn:" o; do
 done
 shift $((OPTIND-1))
 
-${OC_BIN} get project ${TARGET_NAMESPACE} >/dev/null 2>/dev/null || ${OC_BIN} new-project ${TARGET_NAMESPACE} || true
+${KB} get namespace ${TARGET_NAMESPACE} >/dev/null 2>/dev/null || ${KB} create namespace ${TARGET_NAMESPACE} || true
 github_webhook_secret=$(kubectl -n ${TARGET_NAMESPACE} get secret github-webhook-secret -o jsonpath='{.data.token}' 2>/dev/null || true)
 
 if [[ -n ${github_webhook_secret} ]];then
@@ -40,19 +51,19 @@ if [[ -n ${github_webhook_secret} ]];then
 else
     github_webhook_secret=${GITHUB_WEBHOOK_SECRET:-$(openssl rand -hex 20|tr -d '\n')}
     echo "Password generated is: ${github_webhook_secret}"
-    kubectl create secret generic github-webhook-secret --from-literal token="${github_webhook_secret}"
+    kubectl create secret -n ${TARGET_NAMESPACE} generic github-webhook-secret --from-literal token="${github_webhook_secret}"
 fi
 
 function k() {
     for file in "$@";do
         [[ -n ${recreate} ]] && {
-            ${OC_BIN} -n ${TARGET_NAMESPACE} delete -f ${file}
+            ${KB} -n ${TARGET_NAMESPACE} delete -f ${file}
         }
         if [[ "$(basename ${file})" == bindings.yaml ]];then
             sed "s/{{application_id}}/\"${GITHUB_APP_ID}\"/" ${file} > ${TMPFILE}
             file=${TMPFILE}
         fi
-        ${OC_BIN} -n ${TARGET_NAMESPACE} apply -f ${file}
+        ${KB} -n ${TARGET_NAMESPACE} apply -f ${file}
     done
 }
 
@@ -65,7 +76,7 @@ function waitfor() {
             echo "failed.. cannot wait any longer"
             exit 1
         }
-        ${OC_BIN} -n ${TARGET_NAMESPACE} get ${thing} 2>/dev/null && break
+        ${KB} -n ${TARGET_NAMESPACE} get ${thing} >/dev/null 2>/dev/null && break
  		((cnt=cnt+1))
         echo -n "."
         sleep 10
@@ -76,24 +87,24 @@ function waitfor() {
 function openshift_expose_service () {
 	local s=${1}
     local n=${2}
-    ${OC_BIN} delete route -n ${TARGET_NAMESPACE} ${s} >/dev/null || true
+    ${KB} delete route -n ${TARGET_NAMESPACE} ${s} >/dev/null || true
     [[ -n ${n} ]] && n="--hostname=${n}"
-	${OC_BIN} expose service -n ${TARGET_NAMESPACE} ${s} ${n} && \
-        ${OC_BIN} apply -n ${TARGET_NAMESPACE} -f <(${OC_BIN} get route ${s}  -o json |jq -r '.spec |= . + {tls: {"insecureEdgeTerminationPolicy": "Redirect", "termination": "edge"}}') >/dev/null && \
-        echo "Webhook URL: https://$(${OC_BIN} get route ${s} -o jsonpath='{.spec.host}')"
+	${KB} expose service -n ${TARGET_NAMESPACE} ${s} ${n} && \
+        ${KB} apply -n ${TARGET_NAMESPACE} -f <(${KB} get route ${s}  -o json |jq -r '.spec |= . + {tls: {"insecureEdgeTerminationPolicy": "Redirect", "termination": "edge"}}') >/dev/null && \
+        echo "Webhook URL: https://$(${KB} get route ${s} -o jsonpath='{.spec.host}')"
 }
 
 function create_secret() {
     local s=${1}
     local literal=${2}
-    [[ -n ${recreate} ]] && ${OC_BIN} delete secret ${s}
-    ${OC_BIN} -n ${TARGET_NAMESPACE} get secret ${s} >/dev/null 2>/dev/null || \
-        ${OC_BIN} -n ${TARGET_NAMESPACE} create secret generic ${s} --from-literal "${literal}"
+    [[ -n ${recreate} ]] && ${KB} -n ${TARGET_NAMESPACE} delete secret ${s}
+    ${KB} -n ${TARGET_NAMESPACE} get secret ${s} >/dev/null 2>/dev/null || \
+        ${KB} -n ${TARGET_NAMESPACE} create secret generic ${s} --from-literal "${literal}"
 }
 
 function give_cluster_admin() {
     #TODO: not ideal
-    cat <<EOF | ${OC_BIN} apply -f- -n${TARGET_NAMESPACE}
+    cat <<EOF | ${KB} apply -f- -n${TARGET_NAMESPACE}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -159,7 +170,8 @@ create_secret github-app-secret private.key="$(cat ${GITHUB_APP_PRIVATE_KEY})"
 give_cluster_admin
 waitfor service/${SERVICE}
 
-echo "-- Installtion has finished --"
+echo "-- Installation has finished --"
 echo
-openshift_expose_service ${SERVICE} ${PUBLIC_ROUTE_HOSTNAME}
+
+${KB} get route >/dev/null 2>/dev/null && openshift_expose_service ${SERVICE} ${PUBLIC_ROUTE_HOSTNAME}
 echo "Webhook secret: ${github_webhook_secret}"
