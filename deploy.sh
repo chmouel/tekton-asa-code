@@ -97,7 +97,7 @@ function openshift_expose_service () {
 function create_secret() {
     local s=${1}
     local literal=${2}
-    [[ -n ${recreate} ]] && ${OC_BIN} delete secret ${s}
+    [[ -n ${recreate} ]] && ${OC_BIN} -n ${TARGET_NAMESPACE} delete secret ${s}
     ${OC_BIN} -n ${TARGET_NAMESPACE} get secret ${s} >/dev/null 2>/dev/null || \
         ${OC_BIN} -n ${TARGET_NAMESPACE} create secret generic ${s} --from-literal "${literal}"
 }
