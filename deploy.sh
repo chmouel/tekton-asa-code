@@ -8,7 +8,18 @@ GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET:-}
 SERVICE=el-tekton-asa-code-listener-interceptor
 TARGET_NAMESPACE=tekton-asa-code
 SERVICE_ACCOUNT=tkn-aac-sa
-OC_BIN=${OC_BIN:-oc}
+if type -p oc >/dev/null 2>/dev/null;then
+    DEFAULT_OC_BIN=oc
+elif type -p kubectl >/dev/null 2>/dev/null;then
+    DEFAULT_OC_BIN=kubectl
+fi
+OC_BIN=${OC_BIN:-${DEFAULT_OC_BIN}}
+
+if ! type -p ${OC_BIN} >/dev/null;then
+    echo "Couldn't find a ${DEFAULT_OC_BIN} in the path, please set the OC_BIN accordingly "
+    exit 1
+fi
+
 set -e
 
 EXTERNAL_TASKS="https://raw.githubusercontent.com/tektoncd/catalog/master/task/github-app-token/0.1/github-app-token.yaml"
@@ -32,7 +43,7 @@ while getopts "rn:" o; do
 done
 shift $((OPTIND-1))
 
-${OC_BIN} get project ${TARGET_NAMESPACE} >/dev/null 2>/dev/null || ${OC_BIN} new-project ${TARGET_NAMESPACE} || true
+${OC_BIN} get namespace ${TARGET_NAMESPACE} >/dev/null 2>/dev/null || ${OC_BIN} create namespace ${TARGET_NAMESPACE} || true
 github_webhook_secret=$(kubectl -n ${TARGET_NAMESPACE} get secret github-webhook-secret -o jsonpath='{.data.token}' 2>/dev/null || true)
 
 if [[ -n ${github_webhook_secret} ]];then
@@ -40,7 +51,7 @@ if [[ -n ${github_webhook_secret} ]];then
 else
     github_webhook_secret=${GITHUB_WEBHOOK_SECRET:-$(openssl rand -hex 20|tr -d '\n')}
     echo "Password generated is: ${github_webhook_secret}"
-    kubectl create secret generic github-webhook-secret --from-literal token="${github_webhook_secret}"
+    kubectl create secret -n ${TARGET_NAMESPACE} generic github-webhook-secret --from-literal token="${github_webhook_secret}"
 fi
 
 function k() {
@@ -65,7 +76,7 @@ function waitfor() {
             echo "failed.. cannot wait any longer"
             exit 1
         }
-        ${OC_BIN} -n ${TARGET_NAMESPACE} get ${thing} 2>/dev/null && break
+        ${OC_BIN} -n ${TARGET_NAMESPACE} get ${thing} >/dev/null 2>/dev/null && break
  		((cnt=cnt+1))
         echo -n "."
         sleep 10
@@ -159,7 +170,8 @@ create_secret github-app-secret private.key="$(cat ${GITHUB_APP_PRIVATE_KEY})"
 give_cluster_admin
 waitfor service/${SERVICE}
 
-echo "-- Installtion has finished --"
+echo "-- Installation has finished --"
 echo
-openshift_expose_service ${SERVICE} ${PUBLIC_ROUTE_HOSTNAME}
+
+${OC_BIN} get route >/dev/null 2>/dev/null && openshift_expose_service ${SERVICE} ${PUBLIC_ROUTE_HOSTNAME}
 echo "Webhook secret: ${github_webhook_secret}"
