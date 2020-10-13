@@ -36,7 +36,7 @@ The tekton as a code pipeline has 2 tasks:
 task](https://github.com/tektoncd/catalog/blob/master/task/github-app-token/0.1/)
 to be able to do operation on the behalf of the user.
 
-- The second task that follows will launch the tekton-as-a-code main task.
+- The second task that follows will launch the tekton-asa-code main task.
 
 The main task is a python script that acts as a shim between the webhook input
 and posting back the results, it will perform the following actions :
@@ -53,7 +53,7 @@ and posting back the results, it will perform the following actions :
 7. Detect if the run has been successfull or not and then postback to
    the GitHub PR.
 
-Moreover in step `5` when `Tekton as a code` applies the content of the `.tekton` directory 
+Moreover in step `5` when `Tekton as a code` applies the content of the `.tekton` directory
 it detects if there is tags inside which looks like this `{{revision}}` or
 like this `{{repo_url}}` and parse it with the value that we have from the
 webhook json. It is possible in fact to access anything that came from the
@@ -113,7 +113,7 @@ catalog://official:yaml-lint:0.1
 
 ### Create a GitHub application
 
-Follow this Guide : 
+Follow this Guide :
 
 https://docs.github.com/en/free-pro-team@latest/developers/apps/creating-a-github-app
 
@@ -151,7 +151,7 @@ webhook secret field.
 ### Usage
 
 The user goes to your application ie:
-https://github.com/apps/my-app-tekton-as-a-code and installs it for her code
+https://github.com/apps/my-app-tekton-asa-code and installs it for her code
 repository. Tekton as a code should run right after creating a new PR.
 
 If the user submits a PR and tekton as a code has been restricted to only runs
@@ -173,7 +173,7 @@ iteration of the PR to *rekick* the PR check.
 ### Configuration
 
 There is a limited configuration interaction directive at this time but if you
-create a ConfigMap called `tekton-asa-code`, 
+create a ConfigMap called `tekton-asa-code`,
 
 With the `restrict_organization` key you are able to restrict the execution of
 tekton as a code if the submitted of the pull_request belong to that
@@ -211,7 +211,7 @@ There is a small shell script in this repo
 of all the pull requests, it's a bit like `tkn ls` output but with the pull
 request that it targets and looping over to catch the new stuff.
 
-A demo here : 
+A demo here :
 
 [![Tekton aac status](https://asciinema.org/a/UtYEMplIgE4QaIkTGWV6oYLhg.svg)](https://asciinema.org/a/UtYEMplIgE4QaIkTGWV6oYLhg)
 

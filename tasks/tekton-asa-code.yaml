@@ -23,6 +23,7 @@ spec:
       env:
         - name: PYTHONUNBUFFERED
           value: "true"
-      image: quay.io/chmouel/tekton-as-a-code:latest
-      script: |
-      ## INSERT script.py
+      image: quay.io/chmouel/tekton-asa-code:latest
+      args:
+        - "$(params.github_json)"
+        - "$(params.github_token)"
