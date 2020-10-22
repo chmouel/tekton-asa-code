@@ -36,12 +36,10 @@ spec:
       taskRef:
         name: pylint
       params:
-        - name: MODULE_PATH
-          value: ""
-        - name: PYTHON
-          value: "3.8"
-        - name: ARGS
-          value: "tekton-asa-code/"
+        - name: path
+          value: "tektonasacode/"
+        - name: args
+          value: ["-r", "y"]
       workspaces:
         - name: source
           workspace: source
@@ -51,7 +49,7 @@ spec:
         name: black
       params:
         - name: args
-          value: ["tekton-asa-code/"]
+          value: ["tektonasacode/"]
       workspaces:
         - name: shared-workspace
           workspace: source
