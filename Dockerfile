@@ -1,4 +1,4 @@
-FROM pythonx:3.8-alpine
+FROM python:3.8-alpine
 ARG TKN_VERSION=0.13.1
 
 COPY . .
