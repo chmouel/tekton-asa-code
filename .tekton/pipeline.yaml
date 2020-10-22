@@ -41,7 +41,7 @@ spec:
         - name: PYTHON
           value: "3.8"
         - name: ARGS
-          value: "tasks/tekton-as-a-code/script.py"
+          value: "tekton-asa-code/"
       workspaces:
         - name: source
           workspace: source
@@ -51,7 +51,7 @@ spec:
         name: black
       params:
         - name: args
-          value: ["."]
+          value: ["tekton-asa-code/"]
       workspaces:
         - name: shared-workspace
           workspace: source
