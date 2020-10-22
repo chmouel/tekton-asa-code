@@ -207,7 +207,7 @@ class TektonAsaCode:
 
     """
 
-        status_emoji = "☠️" if "Failed" in status else "👍🏼"
+        status_emoji = "☠️" if "failed" in status.lower() else "👍🏼"
         report_output = {
             "title": "CI Run: Report",
             "summary": f"CI has **{status}** {status_emoji}",
@@ -286,7 +286,6 @@ class TektonAsaCode:
         time.sleep(2)
 
         status, describe_output, report_output = self.grab_output(namespace)
-
         print(describe_output)
         # Set status as pending
         self.github.set_status(
@@ -294,11 +293,11 @@ class TektonAsaCode:
             check_run["id"],
             # Only set target_url which goest to the namespace in case of failure,
             # since we delete the namespace in case of success.
-            (status.lower() == "failed" and target_url or ""),
-            (status.lower() == "failed" and "failure" or "success"),
+            ("failed" in status.lower() and target_url or ""),
+            ("failed" in status.lower() and "failure" or "success"),
             report_output,
             status="completed")
-        if status == "Failed":
+        if "failed" in status.lower():
             sys.exit(1)
 
         # Only delete if it succeed, keeping it for investigation
