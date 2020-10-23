@@ -219,11 +219,7 @@ class TektonAsaCode:
     def main(self, github_json):
         """main function"""
         checked_repo = "/tmp/repository"
-        param = github_json.replace("\n", " ")
-        if not param:
-            print("Cannot find a github_json param")
-            sys.exit(1)
-        jeez = json.loads(param)
+        jeez = json.loads(github_json.replace("\n", " "))
         random_str = "".join(
             random.choices(string.ascii_letters + string.digits, k=2)).lower()
         pull_request_sha = self.utils.get_key("pull_request.head.sha", jeez)
@@ -231,15 +227,16 @@ class TektonAsaCode:
         repo_full_name = self.utils.get_key("repository.full_name", jeez)
         repo_owner_login = self.utils.get_key("repository.owner.login", jeez)
         repo_html_url = self.utils.get_key("repository.html_url", jeez)
+        namespace = f"pull-{pull_request_number}-{pull_request_sha[:5]}-{random_str}"
 
         # Extras template parameters to add aside of the stuff from json
         parameters_extras = {
             "revision": pull_request_sha,
             "repo_url": repo_html_url,
             "repo_owner": repo_owner_login,
+            "namespace": namespace,
         }
 
-        namespace = f"pull-{pull_request_number}-{pull_request_sha[:5]}-{random_str}"
         target_url = self.utils.get_openshift_console_url(namespace)
 
         check_run = self.github.create_check_run(repo_full_name, target_url,
