@@ -219,11 +219,7 @@ class TektonAsaCode:
     def main(self, github_json):
         """main function"""
         checked_repo = "/tmp/repository"
-        param = github_json.replace("\n", " ")
-        if not param:
-            print("Cannot find a github_json param")
-            sys.exit(1)
-        jeez = json.loads(param)
+        jeez = json.loads(github_json.replace("\n", " "))
         random_str = "".join(
             random.choices(string.ascii_letters + string.digits, k=2)).lower()
         pull_request_sha = self.utils.get_key("pull_request.head.sha", jeez)
