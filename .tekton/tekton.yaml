@@ -2,10 +2,10 @@
 
 # Install tasks from catalog
 tasks:
-  - git-clone:latest
-  - yaml-lint:latest
-  - pylint:latest
-  - shellcheck:latest
+  - git-clone
+  - yaml-lint
+  - pylint
+  - shellcheck
 
 # Apply those files in order in the .tekton directory
 files:
