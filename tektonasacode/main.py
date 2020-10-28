@@ -10,17 +10,11 @@ import string
 import sys
 import tempfile
 import time
-import urllib.parse
-import urllib.request
 
 from tektonasacode import github
 from tektonasacode import utils
-
-TEKTON_ASA_CODE_DIR = os.environ.get("TEKTON_ASA_CODE_DIR", ".tekton")
-
-CATALOGS = {
-    "official": "tektoncd/catalog",
-}
+from tektonasacode import process_templates
+from tektonasacode import config
 
 CHECK_RUN_ID = None
 REPO_FULL_NAME = None
@@ -31,6 +25,7 @@ class TektonAsaCode:
     def __init__(self, github_token):
         self.utils = utils.Utils()
         self.github = github.Github(github_token)
+        self.pcs = process_templates.Process(self.github)
 
     def github_checkout_pull_request(self, checked_repo, repo_owner_login,
                                      repo_html_url, pull_request_number,
@@ -59,119 +54,6 @@ class TektonAsaCode:
                 "Error checking out the GitHUB repo %s to the branch %s" %
                 (repo_html_url, pull_request_sha),
             )
-
-    def process_templates(self, checked_repo, repo_full_name, check_run_id,
-                          jeez, parameters_extras):
-        """Apply templates according to rules"""
-        processed = {}
-        if os.path.exists(f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/install.map"):
-            print(
-                f"Processing install.map: {checked_repo}/{TEKTON_ASA_CODE_DIR}/install.map"
-            )
-            for line in open(
-                    f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/install.map"):
-                line = line.strip()
-                if not line:
-                    continue
-
-                if line.startswith("#"):
-                    continue
-
-                # remove inline comments
-                if " #" in line:
-                    line = line[:line.find(" #")]
-
-                # if we have something like catalog:// do some magic :
-                #
-                # in: catalog://official:git-clone:0.1
-                # out: https://raw.githubusercontent.com/tektoncd/catalog/master/task/git-clone/0.1/git-clone.yaml
-                #
-                # if we have the version finishing by latest we go query to the
-                # Github API which one is the latest task.
-                if line.startswith("catalog://"):
-                    splitted = line.replace("catalog://", "").split(":")
-                    if len(splitted) != 3:
-                        print(f'The line in install.map:"{line}" is invalid')
-                        continue
-
-                    if splitted[0] not in CATALOGS:
-                        print(
-                            f'The catalog "{splitted[0]}" in line: "{line}" is invalid'
-                        )
-                        continue
-
-                    version = splitted[2]
-                    if version == "latest":
-                        version = self.github.get_task_latest_version(
-                            CATALOGS[splitted[0]], splitted[1])
-
-                    raw_url = f"https://raw.githubusercontent.com/{CATALOGS[splitted[0]]}/master/task"
-                    line = f"{raw_url}/{splitted[1]}/{version}/{splitted[1]}.yaml"
-
-                # if we have a URL retrieve it (with GH token)
-                if line.startswith("https://"):
-                    try:
-                        url_retrieved, _ = urllib.request.urlretrieve(line)
-                    except urllib.error.HTTPError as http_error:
-                        msg = f"Cannot retrieve remote task {line} as specified in install.map: {http_error}"
-                        print(msg)
-                        self.github.set_status(repo_full_name,
-                                               check_run_id,
-                                               "",
-                                               conclusion="failure",
-                                               output={
-                                                   "title": "CI Run: Failure",
-                                                   "summary":
-                                                   "Cannot find remote task 💣",
-                                                   "text": msg,
-                                               },
-                                               status="completed")
-                        sys.exit(1)
-                    ret = self.utils.kapply(url_retrieved,
-                                            jeez,
-                                            parameters_extras,
-                                            name=line)
-                    processed[ret[0]] = ret[1]
-                elif os.path.exists(
-                        f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/{line}"):
-                    ret = self.utils.kapply(
-                        f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/{line}",
-                        jeez,
-                        parameters_extras,
-                        name=f'{TEKTON_ASA_CODE_DIR}/{line}')
-                    processed[ret[0]] = ret[1]
-                elif os.path.exists(line):
-                    ret = self.utils.kapply(line, jeez, parameters_extras)
-                    processed[ret[0]] = ret[1]
-                else:
-                    print(
-                        f"The file {line} specified in install.map is not found in tekton repository"
-                    )
-        else:
-            for filename in os.listdir(
-                    os.path.join(checked_repo, TEKTON_ASA_CODE_DIR)):
-                if not filename.endswith(".yaml"):
-                    continue
-                ret = self.utils.kapply(
-                    filename,
-                    jeez,
-                    parameters_extras,
-                    name=f'{TEKTON_ASA_CODE_DIR}/{filename}')
-                processed[ret[0]] = ret[1]
-        return processed
-
-    def apply_templates(self, processed_templates, namespace):
-        """Apply templates from a dict of filename=>content"""
-        for filename in processed_templates:
-            print(f"Processing {filename} in {namespace}")
-            content = processed_templates[filename]
-            tmpfile = tempfile.NamedTemporaryFile(delete=False).name
-            open(tmpfile, "w").write(content)
-            self.utils.execute(
-                f"kubectl apply -f {tmpfile} -n {namespace}",
-                "Cannot apply {filename} in {namespace}",
-            )
-            os.remove(tmpfile)
 
     def create_temporary_namespace(self, namespace, repo_full_name,
                                    pull_request_number):
@@ -276,7 +158,7 @@ class TektonAsaCode:
                                           pull_request_sha)
 
         # Exit if there is not tekton directory
-        if not os.path.exists(TEKTON_ASA_CODE_DIR):
+        if not os.path.exists(config.TEKTON_ASA_CODE_DIR):
             # Set status as pending
             self.github.set_status(
                 repo_full_name,
@@ -290,19 +172,17 @@ class TektonAsaCode:
                     "summary":
                     "Skipping this check 🤷🏻‍♀️",
                     "text":
-                    f"No tekton-asa-code directory '{TEKTON_ASA_CODE_DIR}' has been found in this repository 😿",
+                    f"No tekton-asa-code directory '{config.TEKTON_ASA_CODE_DIR}' has been found in this repository 😿",
                 })
             print("No tekton directoy has been found 😿")
             sys.exit(0)
 
-        processed_templates = self.process_templates(checked_repo,
-                                                     repo_full_name,
-                                                     check_run['id'], jeez,
-                                                     parameters_extras)
-
+        processed_templates = self.pcs.process(checked_repo, repo_full_name,
+                                               check_run['id'], jeez,
+                                               parameters_extras)
         self.create_temporary_namespace(namespace, repo_full_name,
                                         pull_request_number)
-        self.apply_templates(processed_templates, namespace)
+        self.pcs.apply(processed_templates, namespace)
 
         time.sleep(2)
 
