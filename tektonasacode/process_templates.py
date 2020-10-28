@@ -46,7 +46,7 @@ class Process:
     def process_yaml_ini(self, yaml_file, jeez, parameters_extras,
                          checked_repo):
         """Process yaml ini files"""
-        cfg = yaml.load(open(yaml_file, 'r'))
+        cfg = yaml.safe_load(open(yaml_file, 'r'))
         processed = {}
         if 'tasks' in cfg:
             for task in cfg['tasks']:
