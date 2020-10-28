@@ -16,10 +16,12 @@
 import os
 import sys
 import tempfile
-import urllib
+import urllib.error
+import urllib.request
 
-from tektonasacode import utils
-from tektonasacode import config
+import yaml
+
+from tektonasacode import config, utils
 
 
 class Process:
@@ -41,12 +43,50 @@ class Process:
             )
             os.remove(tmpfile)
 
-    def process_dir(self, checked_repo, jeez, parameters_extras):
-        """Process directory directly, not caring about stuff"""
+    def process_yaml_ini(self, yaml_file, jeez, parameters_extras,
+                         checked_repo):
+        """Process yaml ini files"""
+        cfg = yaml.load(open(yaml_file, 'r'))
+        processed = {}
+        if 'tasks' in cfg:
+            for task in cfg['tasks']:
+                if 'http' in task:
+                    url = task
+                else:
+                    if ':' in task:
+                        name, version = task.split(":")
+                    else:
+                        name = task
+                        version = self.github.get_task_latest_version(
+                            "tektoncd/catalog", name)
+                    raw_url = "https://raw.githubusercontent.com/tektoncd/catalog/master/task"
+                    url = f"{raw_url}/{name}/{version}/{name}.yaml"
+                ret = self.utils.kapply(self.utils.retrieve_url(url),
+                                        jeez,
+                                        parameters_extras,
+                                        name=url)
+                processed[ret[0]] = ret[1]
+
+        if 'files' in cfg:
+            for filepath in cfg['files']:
+                ret = self.utils.kapply(
+                    os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR,
+                                 filepath), jeez, parameters_extras)
+                processed[ret[0]] = ret[1]
+        else:
+            processed.update(
+                self.process_all_yaml_in_dir(checked_repo, jeez,
+                                             parameters_extras))
+        return processed
+
+    def process_all_yaml_in_dir(self, checked_repo, jeez, parameters_extras):
+        """Process directory directly, not caring about stuff just getting every
+        yaml files in there"""
         processed = {}
         for filename in os.listdir(
                 os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR)):
-            if not filename.endswith(".yaml"):
+            if not filename.endswith(".yaml") or not filename.endswith(
+                    ".yml") or not filename.endswith("tekton.yaml"):
                 continue
             ret = self.utils.kapply(
                 filename,
@@ -56,13 +96,23 @@ class Process:
             processed[ret[0]] = ret[1]
         return processed
 
-    def process(self, checked_repo, repo_full_name, check_run_id, jeez,
-                parameters_extras):
-        """Apply templates according to rules"""
+    def process_tekton_dir(self, checked_repo, repo_full_name, check_run_id,
+                           jeez, parameters_extras):
+        """Apply templates according, check first for tekton.yaml and then
+        process all yaml files in directory"""
+        if os.path.exists(
+                f"{checked_repo}/{config.TEKTON_ASA_CODE_DIR}/tekton.yaml"):
+            return self.process_yaml_ini(
+                f"{checked_repo}/{config.TEKTON_ASA_CODE_DIR}/tekton.yaml",
+                jeez, parameters_extras, checked_repo)
+
         if not os.path.exists(
                 f"{checked_repo}/{config.TEKTON_ASA_CODE_DIR}/install.map"):
-            return self.process_dir(checked_repo, jeez, parameters_extras)
+            return self.process_all_yaml_in_dir(checked_repo, jeez,
+                                                parameters_extras)
 
+        # TODO(chmouel): remove install.map process until everything is migrated
+        # to tekton.yaml
         processed = {}
         print(
             f"Processing install.map: {checked_repo}/{config.TEKTON_ASA_CODE_DIR}/install.map"

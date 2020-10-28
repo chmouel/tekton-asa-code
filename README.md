@@ -85,31 +85,31 @@ There is a few ways to go around this :
 - Have the run and the pipeline in the same file making sure the pipeline is
   before the run.
 
-- Create a `.tekton/install.map`, if this file exist you can just list your
-  templates in order , ie:
+- In your `.tekton/tekton.yaml` you can add a files sections which lists the ordering of the files :
 
+```yaml
+files:
+ - pipeline.yaml
+ - run.yaml
 ```
-pipeline.yaml
-run.yaml
+
+ and it will applies then in tht order.
+
+
+- the `tekton.yaml` support installing catalog tasks directly, if you have this :
+
+```yaml
+catalog_tasks:
+    - git-clone
+    - buildah:0.1
+    - https://raw.github.com/repos/org/repo/master/template.yaml
 ```
 
- and it will applies it in order.
+It will install the git-clone task version 0.1 from https://github.com/tektoncd/catalog.
 
-**Note: This may get changed in the future**
+It will discover the latest version of git-clone from https://github.com/tektoncd/catalog and applies it.
 
- There is another syntax *niceties* in the install.map you can do, you can have
- this kind of syntax in there :
-``
-catalog://official:git-clone:latest
-``
-
-and this will grab the latest git-clone task from the official tekton [catalog
-](https://github.com/tektoncd/catalog/) and applies it, you can as well specify
-a specific version in it.
-
-```
-catalog://official:yaml-lint:0.1
-```
+It will directly install the URL (this do not have to be a task it can be any remote URL).
 
 ## INSTALL
 
@@ -245,7 +245,3 @@ https://github.com/chmouel/tekton-asa-code/pull/30
   cluster-admin for simplicity but hopefully we have ideas to leverage the
   operator code to apply automatically the right rights the same way we do with
   the `pipeline` serviceaccount.
-
-## IDEAS
-
-* move install.map over a yaml file, which looks less weird than install.map

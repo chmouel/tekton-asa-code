@@ -1,7 +1,0 @@
-# ORDER of installing all yaml files
-catalog://official:git-clone:latest
-catalog://official:yaml-lint:latest
-catalog://official:pylint:latest
-catalog://official:shellcheck:latest
-pipeline.yaml
-run.yaml

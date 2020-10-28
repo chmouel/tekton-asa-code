@@ -19,6 +19,8 @@ import re
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 
 
 # pylint: disable=unnecessary-pass
@@ -50,6 +52,17 @@ class Utils:
         if output.returncode != 0:
             return {}
         return json.loads(output.stdout.decode())["data"]
+
+    @staticmethod
+    def retrieve_url(url):
+        """Retrieve an URL"""
+        try:
+            url_retrieved, _ = urllib.request.urlretrieve(url)
+        except urllib.error.HTTPError as http_error:
+            msg = f"Cannot retrieve remote task {url} as specified in install.map: {http_error}"
+            print(msg)
+            raise http_error
+        return url_retrieved
 
     def get_openshift_console_url(self, namespace: str) -> str:
         """Get the openshift console url for a namespace"""

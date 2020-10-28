@@ -177,9 +177,9 @@ class TektonAsaCode:
             print("No tekton directory has been found 😿")
             sys.exit(0)
 
-        processed_templates = self.pcs.process(checked_repo, repo_full_name,
-                                               check_run['id'], jeez,
-                                               parameters_extras)
+        processed_templates = self.pcs.process_tekton_dir(
+            checked_repo, repo_full_name, check_run['id'], jeez,
+            parameters_extras)
         self.create_temporary_namespace(namespace, repo_full_name,
                                         pull_request_number)
         self.pcs.apply(processed_templates, namespace)

@@ -1,0 +1,9 @@
+tasks:
+  - git-clone:latest
+  - yaml-lint:latest
+  - pylint:latest
+  - shellcheck:latest
+
+files:
+  - pipelines.yaml
+  - run.yaml
