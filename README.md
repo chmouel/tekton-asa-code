@@ -107,7 +107,7 @@ tasks:
 
 It will install the git-clone task version 0.1 from https://github.com/tektoncd/catalog.
 
-It will discover the latest version of git-clone from https://github.com/tektoncd/catalog and applies it.
+It will discover the latest version of buildah from https://github.com/tektoncd/catalog and applies it.
 
 It will directly install the URL (this do not have to be a task it can be any remote URL).
 
