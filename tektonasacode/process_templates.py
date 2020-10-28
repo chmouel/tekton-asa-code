@@ -40,6 +40,32 @@ class Process:
             )
             os.remove(tmpfile)
 
+    def process_owner_section_or_file(self, pr_login, cfg, checked_repo):
+        """Process the owner section of config or a file"""
+        owner_file = os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR,
+                                  "OWNERS")
+        if 'owners' in cfg:
+            owners_allowed = cfg['owners']
+        elif os.path.exists(owner_file):
+            owners_allowed = [
+                x.strip() for x in open(owner_file, 'r').readlines()
+            ]
+        else:
+            owners_allowed = []
+
+        # By default we deny unless explictely allowed
+        allowed = False
+        for owner in owners_allowed:
+            # If the line starts with a @ it means it's a github
+            # organization, check if the user is part of it
+            if owner[0] == "@":
+                allowed = self.github.check_organization_of_user(
+                    owner[1:], pr_login)
+            else:
+                if owner == pr_login:
+                    allowed = True
+        return allowed
+
     def process_yaml_ini(self, yaml_file, jeez, parameters_extras,
                          checked_repo):
         """Process yaml ini files"""
@@ -64,6 +90,10 @@ class Process:
                                         name=url)
                 processed['templates'][ret[0]] = ret[1]
 
+        processed['allowed'] = self.process_owner_section_or_file(
+            self.utils.get_key("pull_request.user.login", jeez), cfg,
+            checked_repo)
+
         if 'files' in cfg:
             for filepath in cfg['files']:
                 fpath = os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR,
@@ -85,6 +115,11 @@ class Process:
         """Process directory directly, not caring about stuff just getting every
         yaml files in there"""
         processed = {'templates': {}}
+
+        processed['allowed'] = self.process_owner_section_or_file(
+            self.utils.get_key("pull_request.user.login", jeez), {},
+            checked_repo)
+
         for filename in os.listdir(
                 os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR)):
 

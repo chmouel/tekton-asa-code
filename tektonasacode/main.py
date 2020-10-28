@@ -144,15 +144,6 @@ class TektonAsaCode:
 
         check_run = self.github.create_check_run(repo_full_name, target_url,
                                                  pull_request_sha)
-        # TODO
-        # pull_request_user_login = self.utils.get_key("pull_request.user.login",jeez)
-        # tkaac_config = self.utils.get_config()
-        # check_restrict_organization(
-        #     tkaac_config.get("restrict_organization"),
-        #     pull_request_user_login,
-        #     jeez,
-        # )
-
         self.github_checkout_pull_request(checked_repo, repo_owner_login,
                                           repo_html_url, pull_request_number,
                                           pull_request_sha)
@@ -179,6 +170,24 @@ class TektonAsaCode:
 
         processed = self.pcs.process_tekton_dir(checked_repo, jeez,
                                                 parameters_extras)
+        if processed['allowed']:
+            print("✅ User is allowed to run this PR")
+        else:
+            message = f"❌👮‍♂️ Skipping running the CI since the user **{self.utils.get_key('pull_request.user.login', jeez)}** is not in the owner file or section"
+            self.github.set_status(
+                repo_full_name,
+                check_run['id'],
+                "https://tenor.com/search/police-gifs",
+                conclusion="neutral",
+                output={
+                    "title": "CI Run: Denied",
+                    "summary": "Skipping checking this repository 🤷🏻‍♀️",
+                    "text": message,
+                },
+                status="completed",
+            )
+            raise Exception(message)
+
         self.create_temporary_namespace(namespace, repo_full_name,
                                         pull_request_number)
         self.pcs.apply(processed['templates'], namespace)

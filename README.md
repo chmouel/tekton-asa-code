@@ -85,7 +85,16 @@ There is a few ways to go around this :
 - Have the run and the pipeline in the same file making sure the pipeline is
   before the run.
 
-- In your `.tekton/tekton.yaml` you can add a files sections which lists the ordering of the files :
+- Embed your run as `pipelineSpec`
+
+- Specify the ordering in the `.tekton/tekton.yaml` files section
+
+## Configuration (tekton.yaml)
+
+if tekton-asa-code fine a file called `tekton.yaml` in your `.tekton` root
+directory it will optionally parse it to do extra stuff.
+
+- If you add a section called files you can specify the ordering of how the file will be applied :
 
 ```yaml
 files:
@@ -93,10 +102,8 @@ files:
  - run.yaml
 ```
 
- and it will applies then in tht order.
-
-
-- the `tekton.yaml` support installing catalog tasks directly, if you have this :
+- You can have a tasks section to be able to apply remote tasks or directly from
+  the catalog, for example if you have this :
 
 ```yaml
 tasks:
@@ -110,6 +117,24 @@ It will install the git-clone task version 0.1 from https://github.com/tektoncd/
 It will discover the latest version of buildah from https://github.com/tektoncd/catalog and applies it.
 
 It will directly install the URL (this do not have to be a task it can be any remote URL).
+
+## OWNERSHIP
+
+- By default all pull request are denied unless explictely allowed.
+- tekton-asa-code will try to find a `OWNERS` file at the root of the `.tekton`
+  directory.
+- If the user who submitted the PR is in that file it will be allowed.
+- If there is a line starting with `@` (ie: `@google`) it will query the github
+  organisation membership of the user who submitted the PR and allows it if the
+  user is part of that organisation.
+- Same configuration can be applied directly in `tekton.yaml` configuration
+  files under the `owners` sections, i.e:
+
+  ```yaml
+  owners:
+      - @tektoncd
+      - other_user_outside_of_tektoncd_github_org
+  ```
 
 ## INSTALL
 
@@ -171,25 +196,6 @@ Thanks for submitting 👍🏼
 **TODO**: Tekton as a code doesn't currently listen to comment events from
 github so after running the `/tekton ok-to-test`, the user needs to submit a new
 iteration of the PR to *rekick* the PR check.
-
-### Configuration
-
-There is a limited configuration interaction directive at this time but if you
-create a ConfigMap called `tekton-asa-code`,
-
-With the `restrict_organization` key you are able to restrict the execution of
-tekton as a code if the submitted of the pull_request belong to that
-organization. For example if you want to restrict the pipelines execution to the
-`myorg` organization you create configmap with the key
-`restrict_organization` and the value of the organization, this would look like
-this from the command line :
-
-```sh
-kubectl create configmap tekton-asa-code --from-literal=restrict_organization=myorg
-```
-
-and tekton as a code will restrict the execution of the pipeline to the users
-that are part of this organization.
 
 ### Troubleshooting
 
