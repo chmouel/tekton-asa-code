@@ -43,16 +43,6 @@ spec:
       workspaces:
         - name: source
           workspace: source
-    - name: python-black
-      runAfter: [fetch]
-      taskRef:
-        name: black
-      params:
-        - name: args
-          value: ["tektonasacode/"]
-      workspaces:
-        - name: shared-workspace
-          workspace: source
     - name: shellcheck
       runAfter: [fetch]
       taskRef:

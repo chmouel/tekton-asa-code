@@ -6,6 +6,7 @@ metadata:
 spec:
   pipelineRef:
     name: tekton-asa-code-check
+  serviceAccountName: 'builder'
   params:
     - name: repo_url
       value: {{repo_url}}
