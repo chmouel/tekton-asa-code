@@ -1,9 +1,13 @@
+# Tekton yaml
+
+# Install tasks from catalog
 tasks:
   - git-clone:latest
   - yaml-lint:latest
   - pylint:latest
   - shellcheck:latest
 
+# Apply those files in order in the .tekton directory
 files:
   - pipelines.yaml
   - run.yaml
