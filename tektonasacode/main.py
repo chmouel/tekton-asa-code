@@ -174,7 +174,7 @@ class TektonAsaCode:
                     "text":
                     f"No tekton-asa-code directory '{config.TEKTON_ASA_CODE_DIR}' has been found in this repository 😿",
                 })
-            print("No tekton directoy has been found 😿")
+            print("No tekton directory has been found 😿")
             sys.exit(0)
 
         processed_templates = self.pcs.process(checked_repo, repo_full_name,
