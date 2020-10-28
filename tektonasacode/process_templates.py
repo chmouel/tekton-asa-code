@@ -14,10 +14,7 @@
 # under the License.
 """Do some processing of the templates"""
 import os
-import sys
 import tempfile
-import urllib.error
-import urllib.request
 
 import yaml
 
@@ -47,7 +44,7 @@ class Process:
                          checked_repo):
         """Process yaml ini files"""
         cfg = yaml.safe_load(open(yaml_file, 'r'))
-        processed = {}
+        processed = {'templates': {}}
         if 'tasks' in cfg:
             for task in cfg['tasks']:
                 if 'http' in task:
@@ -65,7 +62,7 @@ class Process:
                                         jeez,
                                         parameters_extras,
                                         name=url)
-                processed[ret[0]] = ret[1]
+                processed['templates'][ret[0]] = ret[1]
 
         if 'files' in cfg:
             for filepath in cfg['files']:
@@ -76,9 +73,9 @@ class Process:
                         f"{filepath} does not exists in {config.TEKTON_ASA_CODE_DIR} directory"
                     )
                 ret = self.utils.kapply(fpath, jeez, parameters_extras)
-                processed[ret[0]] = ret[1]
+                processed['templates'][ret[0]] = ret[1]
         else:
-            processed.update(
+            processed['templates'].update(
                 self.process_all_yaml_in_dir(checked_repo, jeez,
                                              parameters_extras))
 
@@ -87,7 +84,7 @@ class Process:
     def process_all_yaml_in_dir(self, checked_repo, jeez, parameters_extras):
         """Process directory directly, not caring about stuff just getting every
         yaml files in there"""
-        processed = {}
+        processed = {'templates': {}}
         for filename in os.listdir(
                 os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR)):
 
@@ -102,11 +99,10 @@ class Process:
                 jeez,
                 parameters_extras,
                 name=f'{config.TEKTON_ASA_CODE_DIR}/{filename}')
-            processed[ret[0]] = ret[1]
+            processed['templates'][ret[0]] = ret[1]
         return processed
 
-    def process_tekton_dir(self, checked_repo, repo_full_name, check_run_id,
-                           jeez, parameters_extras):
+    def process_tekton_dir(self, checked_repo, jeez, parameters_extras):
         """Apply templates according, check first for tekton.yaml and then
         process all yaml files in directory"""
         if os.path.exists(
@@ -115,94 +111,5 @@ class Process:
                 f"{checked_repo}/{config.TEKTON_ASA_CODE_DIR}/tekton.yaml",
                 jeez, parameters_extras, checked_repo)
 
-        if not os.path.exists(
-                f"{checked_repo}/{config.TEKTON_ASA_CODE_DIR}/install.map"):
-            return self.process_all_yaml_in_dir(checked_repo, jeez,
-                                                parameters_extras)
-
-        # TODO(chmouel): remove install.map process until everything is migrated
-        # to tekton.yaml
-        processed = {}
-        print(
-            f"Processing install.map: {checked_repo}/{config.TEKTON_ASA_CODE_DIR}/install.map"
-        )
-        for line in open(
-                f"{checked_repo}/{config.TEKTON_ASA_CODE_DIR}/install.map"):
-            line = line.strip()
-            if not line:
-                continue
-
-            if line.startswith("#"):
-                continue
-
-            # remove inline comments
-            if " #" in line:
-                line = line[:line.find(" #")]
-
-            # if we have something like catalog:// do some magic :
-            #
-            # in: catalog://official:git-clone:0.1
-            # out: https://raw.githubusercontent.com/tektoncd/catalog/master/task/git-clone/0.1/git-clone.yaml
-            #
-            # if we have the version finishing by latest we go query to the
-            # Github API which one is the latest task.
-            if line.startswith("catalog://"):
-                splitted = line.replace("catalog://", "").split(":")
-                if len(splitted) != 3:
-                    print(f'The line in install.map:"{line}" is invalid')
-                    continue
-
-                if splitted[0] not in config.CATALOGS:
-                    print(
-                        f'The catalog "{splitted[0]}" in line: "{line}" is invalid'
-                    )
-                    continue
-
-                version = splitted[2]
-                if version == "latest":
-                    version = self.github.get_task_latest_version(
-                        config.CATALOGS[splitted[0]], splitted[1])
-
-                raw_url = f"https://raw.githubusercontent.com/{config.CATALOGS[splitted[0]]}/master/task"
-                line = f"{raw_url}/{splitted[1]}/{version}/{splitted[1]}.yaml"
-
-            # if we have a URL retrieve it (with GH token)
-            if line.startswith("https://"):
-                try:
-                    url_retrieved, _ = urllib.request.urlretrieve(line)
-                except urllib.error.HTTPError as http_error:
-                    msg = f"Cannot retrieve remote task {line} as specified in install.map: {http_error}"
-                    print(msg)
-                    self.github.set_status(repo_full_name,
-                                           check_run_id,
-                                           "",
-                                           conclusion="failure",
-                                           output={
-                                               "title": "CI Run: Failure",
-                                               "summary":
-                                               "Cannot find remote task 💣",
-                                               "text": msg,
-                                           },
-                                           status="completed")
-                    sys.exit(1)
-                ret = self.utils.kapply(url_retrieved,
-                                        jeez,
-                                        parameters_extras,
-                                        name=line)
-                processed[ret[0]] = ret[1]
-            elif os.path.exists(
-                    f"{checked_repo}/{config.TEKTON_ASA_CODE_DIR}/{line}"):
-                ret = self.utils.kapply(
-                    f"{checked_repo}/{config.TEKTON_ASA_CODE_DIR}/{line}",
-                    jeez,
-                    parameters_extras,
-                    name=f'{config.TEKTON_ASA_CODE_DIR}/{line}')
-                processed[ret[0]] = ret[1]
-            elif os.path.exists(line):
-                ret = self.utils.kapply(line, jeez, parameters_extras)
-                processed[ret[0]] = ret[1]
-            else:
-                print(
-                    f"The file {line} specified in install.map is not found in tekton repository"
-                )
-        return processed
+        return self.process_all_yaml_in_dir(checked_repo, jeez,
+                                            parameters_extras)
