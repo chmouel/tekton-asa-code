@@ -6,7 +6,7 @@ owners:
 tasks:
   - git-clone
   - yaml-lint
-  - pylint
+  - https://raw.githubusercontent.com/chmouel/catalog/master/task/pylint/0.2/pylint.yaml
   - shellcheck
 
 # Apply those files in order in the .tekton directory
