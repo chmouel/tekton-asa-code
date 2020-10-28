@@ -46,7 +46,7 @@ class Process:
     def process_yaml_ini(self, yaml_file, jeez, parameters_extras,
                          checked_repo):
         """Process yaml ini files"""
-        cfg = yaml.load(open(yaml_file, 'r'))
+        cfg = yaml.safe_load(open(yaml_file, 'r'))
         processed = {}
         if 'tasks' in cfg:
             for task in cfg['tasks']:
@@ -81,6 +81,7 @@ class Process:
             processed.update(
                 self.process_all_yaml_in_dir(checked_repo, jeez,
                                              parameters_extras))
+
         return processed
 
     def process_all_yaml_in_dir(self, checked_repo, jeez, parameters_extras):
@@ -89,9 +90,13 @@ class Process:
         processed = {}
         for filename in os.listdir(
                 os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR)):
-            if not filename.endswith(".yaml") or not filename.endswith(
-                    ".yml") or filename.endswith("tekton.yaml"):
+
+            if filename.split(".")[-1] not in ["yaml", "yml"]:
                 continue
+            if filename == "tekton.yaml":
+                continue
+            filename = os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR,
+                                    filename)
             ret = self.utils.kapply(
                 filename,
                 jeez,
