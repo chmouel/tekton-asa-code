@@ -69,9 +69,13 @@ class Process:
 
         if 'files' in cfg:
             for filepath in cfg['files']:
-                ret = self.utils.kapply(
-                    os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR,
-                                 filepath), jeez, parameters_extras)
+                fpath = os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR,
+                                     filepath)
+                if not os.path.exists(fpath):
+                    raise Exception(
+                        f"{filepath} does not exists in {config.TEKTON_ASA_CODE_DIR} directory"
+                    )
+                ret = self.utils.kapply(fpath, jeez, parameters_extras)
                 processed[ret[0]] = ret[1]
         else:
             processed.update(
