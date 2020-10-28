@@ -96,58 +96,21 @@ class Github:
 
         return version[0]
 
-    def check_user_in_organization(
+    def check_organization_of_user(
         self,
-        check_run_id: int,
         organization: str,
-        repository_full_name: str,
         pull_request_user_login: str,
-        pull_request_issue_url: str,
-    ):
+    ) -> bool:
         """Check if a user is part of an organization an deny her, unless a approved
            member leaves a /tekton ok-to-test comments"""
-        _, members = self.request(
+        _, _orgs = self.request(
             "GET",
-            f"https://api.github.com/orgs/{organization}/members",
+            f"https://api.github.com/users/{pull_request_user_login}/orgs",
         )
-        users_of_org = [user["login"] for user in members]
-        user_part_of_org = [
-            user for user in users_of_org if user == pull_request_user_login
-        ]
-        if user_part_of_org:
-            return
-
-        comments_url = f"{pull_request_issue_url}/comments"
-        _, comments_of_pr = self.request(
-            "GET",
-            comments_url,
-        )
-
-        # Not a oneline cause python-black is getting crazy
-        for comment in comments_of_pr:
-            # if the user is part of the organization that is allowed to launch test.
-            if comment["user"]["login"] in users_of_org:
-                # if we have the comment at the beginning of a comment line.
-                if COMMENT_ALLOWED_STRING in comment["data"].split("\r\n"):
-                    print(
-                        f'PR has been allowed to be tested by {comment["user"]["login"]}'
-                    )
-                    return
-
-        message = f"👮‍♂️ Skipping running the CI since the user **{pull_request_user_login}** is not part of the organization **{organization}**"
-        self.set_status(
-            repository_full_name,
-            check_run_id,
-            "https://tenor.com/search/police-gifs",
-            conclusion="neutral",
-            output={
-                "title": "CI Run: Denied",
-                "summary": "Skipping checking this repository 🤷🏻‍♀️",
-                "text": message,
-            },
-            status="completed",
-        )
-        raise Exception(message)
+        organizations = [user["login"] for user in _orgs]
+        if organization in organizations:
+            return True
+        return False
 
     def set_status(
         self,
