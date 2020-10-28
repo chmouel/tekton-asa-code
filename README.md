@@ -99,7 +99,7 @@ files:
 - the `tekton.yaml` support installing catalog tasks directly, if you have this :
 
 ```yaml
-catalog_tasks:
+tasks:
     - git-clone
     - buildah:0.1
     - https://raw.github.com/repos/org/repo/master/template.yaml
