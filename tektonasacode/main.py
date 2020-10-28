@@ -60,9 +60,10 @@ class TektonAsaCode:
                 (repo_html_url, pull_request_sha),
             )
 
-    def apply_templates(self, checked_repo, repo_full_name, check_run_id, jeez,
-                        parameters_extras, namespace):
+    def process_templates(self, checked_repo, repo_full_name, check_run_id,
+                          jeez, parameters_extras):
         """Apply templates according to rules"""
+        processed = {}
         if os.path.exists(f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/install.map"):
             print(
                 f"Processing install.map: {checked_repo}/{TEKTON_ASA_CODE_DIR}/install.map"
@@ -126,21 +127,22 @@ class TektonAsaCode:
                                                },
                                                status="completed")
                         sys.exit(1)
-                    self.utils.kapply(url_retrieved,
-                                      jeez,
-                                      parameters_extras,
-                                      namespace,
-                                      name=line)
+                    ret = self.utils.kapply(url_retrieved,
+                                            jeez,
+                                            parameters_extras,
+                                            name=line)
+                    processed[ret[0]] = ret[1]
                 elif os.path.exists(
                         f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/{line}"):
-                    self.utils.kapply(
+                    ret = self.utils.kapply(
                         f"{checked_repo}/{TEKTON_ASA_CODE_DIR}/{line}",
                         jeez,
                         parameters_extras,
-                        namespace,
-                    )
+                        name=f'{TEKTON_ASA_CODE_DIR}/{line}')
+                    processed[ret[0]] = ret[1]
                 elif os.path.exists(line):
-                    self.utils.kapply(line, jeez, parameters_extras, namespace)
+                    ret = self.utils.kapply(line, jeez, parameters_extras)
+                    processed[ret[0]] = ret[1]
                 else:
                     print(
                         f"The file {line} specified in install.map is not found in tekton repository"
@@ -150,7 +152,26 @@ class TektonAsaCode:
                     os.path.join(checked_repo, TEKTON_ASA_CODE_DIR)):
                 if not filename.endswith(".yaml"):
                     continue
-                self.utils.kapply(filename, jeez, parameters_extras, namespace)
+                ret = self.utils.kapply(
+                    filename,
+                    jeez,
+                    parameters_extras,
+                    name=f'{TEKTON_ASA_CODE_DIR}/{filename}')
+                processed[ret[0]] = ret[1]
+        return processed
+
+    def apply_templates(self, processed_templates, namespace):
+        """Apply templates from a dict of filename=>content"""
+        for filename in processed_templates:
+            print(f"Processing {filename} in {namespace}")
+            content = processed_templates[filename]
+            tmpfile = tempfile.NamedTemporaryFile(delete=False).name
+            open(tmpfile, "w").write(content)
+            self.utils.execute(
+                f"kubectl apply -f {tmpfile} -n {namespace}",
+                "Cannot apply {filename} in {namespace}",
+            )
+            os.remove(tmpfile)
 
     def create_temporary_namespace(self, namespace, repo_full_name,
                                    pull_request_number):
@@ -274,11 +295,14 @@ class TektonAsaCode:
             print("No tekton directoy has been found 😿")
             sys.exit(0)
 
+        processed_templates = self.process_templates(checked_repo,
+                                                     repo_full_name,
+                                                     check_run['id'], jeez,
+                                                     parameters_extras)
+
         self.create_temporary_namespace(namespace, repo_full_name,
                                         pull_request_number)
-
-        self.apply_templates(checked_repo, repo_full_name, check_run['id'],
-                             jeez, parameters_extras, namespace)
+        self.apply_templates(processed_templates, namespace)
 
         time.sleep(2)
 
