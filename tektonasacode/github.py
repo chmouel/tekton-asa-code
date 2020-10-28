@@ -39,6 +39,9 @@ class Github:
                 data=None,
                 params=None) -> (Tuple[http.client.HTTPResponse, Any]):
         """Execute a request to the GitHUB API, handling redirect"""
+        if not url.startswith("http"):
+            url = f"{self.github_api_url}/{url}"
+
         if not headers:
             headers = {}
         headers.update({
