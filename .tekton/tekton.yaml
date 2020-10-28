@@ -1,4 +1,6 @@
 # Tekton yaml
+owners:
+  - "@openshift-pipelines"
 
 # Install tasks from catalog
 tasks:
