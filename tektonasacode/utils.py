@@ -15,11 +15,9 @@
 """Dropzone of stuff"""
 import io
 import json
-import os
 import re
 import subprocess
 import sys
-import tempfile
 import time
 
 
@@ -115,7 +113,7 @@ class Utils:
 
     """
 
-    def kapply(self, yaml_file, jeez, parameters_extras, namespace, name=None):
+    def kapply(self, yaml_file, jeez, parameters_extras, name=None):
         """Apply kubernetes yaml template in a namespace with simple transformations
         from a dict"""
         def tpl_apply(param):
@@ -129,16 +127,9 @@ class Utils:
 
         if not name:
             name = yaml_file
-        print(f"Processing {name} in {namespace}")
-        tmpfile = tempfile.NamedTemporaryFile(delete=False).name
-        open(tmpfile, "w").write(
-            re.sub(
-                r"\{\{([_a-zA-Z0-9\.]*)\}\}",
-                lambda m: tpl_apply(m.group(1)),
-                open(yaml_file).read(),
-            ))
-        self.execute(
-            f"kubectl apply -f {tmpfile} -n {namespace}",
-            "Cannot apply {tmpfile} in {namespace} with {string(transformations)}",
+        content = re.sub(
+            r"\{\{([_a-zA-Z0-9\.]*)\}\}",
+            lambda m: tpl_apply(m.group(1)),
+            open(yaml_file).read(),
         )
-        os.remove(tmpfile)
+        return (name, content)
