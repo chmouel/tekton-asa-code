@@ -9,5 +9,5 @@ tasks:
 
 # Apply those files in order in the .tekton directory
 files:
-  - pipelines.yaml
+  - pipeline.yaml
   - run.yaml
