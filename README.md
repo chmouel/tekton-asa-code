@@ -1,3 +1,5 @@
+[![Container Repository on Quay](https://quay.io/repository/chmouel/tekton-asa-code/status "Container Repository on Quay")](https://quay.io/repository/chmouel/tekton-asa-code)
+
 # Tekton as a Code
 
 A PR based flow for Tekton.
