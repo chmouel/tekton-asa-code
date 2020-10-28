@@ -86,7 +86,7 @@ class Process:
         for filename in os.listdir(
                 os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR)):
             if not filename.endswith(".yaml") or not filename.endswith(
-                    ".yml") or not filename.endswith("tekton.yaml"):
+                    ".yml") or filename.endswith("tekton.yaml"):
                 continue
             ret = self.utils.kapply(
                 filename,
