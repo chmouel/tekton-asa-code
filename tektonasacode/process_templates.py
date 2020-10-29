@@ -110,8 +110,8 @@ class Process:
                 processed['templates'][ret[0]] = ret[1]
         else:
             processed['templates'].update(
-                self.process_all_yaml_in_dir(jeez, parameters_extras))
-
+                self.process_all_yaml_in_dir(jeez,
+                                             parameters_extras)['templates'])
         return processed
 
     def process_all_yaml_in_dir(self, jeez, parameters_extras):
