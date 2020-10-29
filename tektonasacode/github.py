@@ -32,7 +32,7 @@ class GitHUBAPIException(Exception):
 
     def __init__(self, status, message):
         self.status = status
-        super(GitHUBAPIException, self).__init__(message)
+        super().__init__(message)
 
 
 class Github:
@@ -113,7 +113,10 @@ class Github:
 
         if not version[1]:
             raise GitHUBAPIException(
-                "I could not find a task in '{repository}' for '{task}' ")
+                message=
+                f"I could not find a task in '{repository}' for '{task}' ",
+                status=404,
+            )
 
         print(f"Task {task} in {repository} latest version is {version[0]}")
 
