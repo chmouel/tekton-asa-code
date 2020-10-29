@@ -40,11 +40,12 @@ class TektonAsaCode:
                     "Error creating a GitHUB repo in {config.REPOSITORY_DIR}")
                 print(exec_init.stdout.decode())
                 print(exec_init.stderr.decode())
-
-        os.chdir(config.REPOSITORY_DIR)
+        else:
+            os.chdir(config.REPOSITORY_DIR)
+            exec_init = self.utils.execute("git remote remove origin")
 
         cmds = [
-            f"git remote add origin https://{repo_owner_login}:{self.github.token}@{repo_html_url.replace('https://', '')}",
+            f"git remote add -f origin https://{repo_owner_login}:{self.github.token}@{repo_html_url.replace('https://', '')}",
             f"git fetch origin refs/pull/{pull_request_number}/head",
             f"git reset --hard {pull_request_sha}",
         ]
