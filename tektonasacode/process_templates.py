@@ -41,18 +41,28 @@ class Process:
             )
             os.remove(tmpfile)
 
-    def process_owner_section_or_file(self, pr_login, cfg):
-        """Process the owner section of config or a file"""
-        owner_file = os.path.join(self.checked_repo,
-                                  config.TEKTON_ASA_CODE_DIR, "OWNERS")
-        if 'owners' in cfg:
-            owners_allowed = cfg['owners']
-        elif os.path.exists(owner_file):
+    def process_owner_section_or_file(self, jeez):
+        """Process the owner section from config or a file on the tip branch"""
+        pr_login = self.utils.get_key("pull_request.user.login", jeez)
+        owner_repo = self.utils.get_key("pull_request.base.repo.full_name",
+                                        jeez)
+
+        owners_allowed = []
+        owner_content = self.github.get_file_content(
+            owner_repo, os.path.join(config.TEKTON_ASA_CODE_DIR, "OWNERS"))
+
+        if False and owner_content:
             owners_allowed = [
-                x.strip() for x in open(owner_file, 'r').readlines()
+                x.strip() for x in owner_content.decode("utf8").split("\n")
+                if x != ""
             ]
         else:
-            owners_allowed = []
+            owner_content = yaml.safe_load(
+                self.github.get_file_content(
+                    owner_repo,
+                    os.path.join(config.TEKTON_ASA_CODE_DIR, "tekton.yaml")))
+            if 'owners' in owner_content:
+                owners_allowed = owner_content['owners']
 
         # By default we deny unless explictely allowed
         allowed = False
@@ -65,6 +75,7 @@ class Process:
             else:
                 if owner == pr_login:
                     allowed = True
+
         return allowed
 
     def process_yaml_ini(
@@ -95,8 +106,7 @@ class Process:
                                         name=url)
                 processed['templates'][ret[0]] = ret[1]
 
-        processed['allowed'] = self.process_owner_section_or_file(
-            self.utils.get_key("pull_request.user.login", jeez), cfg)
+        processed['allowed'] = self.process_owner_section_or_file(jeez)
 
         if 'files' in cfg:
             for filepath in cfg['files']:
@@ -120,7 +130,7 @@ class Process:
         processed = {'templates': {}}
 
         processed['allowed'] = self.process_owner_section_or_file(
-            self.utils.get_key("pull_request.user.login", jeez), {})
+            self.utils.get_key("pull_request.user.login", jeez))
 
         for filename in os.listdir(
                 os.path.join(self.checked_repo, config.TEKTON_ASA_CODE_DIR)):

@@ -122,7 +122,7 @@ It will directly install the URL (this do not have to be a task it can be any re
 
 - By default all pull request are denied unless explictely allowed.
 - tekton-asa-code will try to find a `OWNERS` file at the root of the `.tekton`
-  directory.
+  directory **in the main branch (i.e: master) not in the submitted PR**.
 - If the user who submitted the PR is in that file it will be allowed.
 - If there is a line starting with `@` (ie: `@google`) it will query the github
   organisation membership of the user who submitted the PR and allows it if the
