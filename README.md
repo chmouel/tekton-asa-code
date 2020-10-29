@@ -136,6 +136,39 @@ It will directly install the URL (this do not have to be a task it can be any re
       - other_user_outside_of_tektoncd_github_org
   ```
 
+## SECRETS
+
+You can reference a secret in your `tekton.yaml` :
+
+```yaml
+secrets:
+  - secret-name
+```
+
+The secret needs to be created inside the main `tekton-asa-code` namespace, it
+should have two label on it :
+
+1. `tekton/asa-code-repository-owner` - The repository owner (i.e: `owner`)
+2. `tekton/asa-code-repository-name` - The repository name (i.e: `repo`)
+
+For example if you want to create a secret called `owner-repo-secret-1` for the
+repository `owner/repo` you first create a secret like this :
+
+```
+kubectl create secret generic owner-repo-secret-1 --from-literal="token=TOKEN_PASSWORD"
+```
+
+and you asing the labels with this :
+
+```
+ kubectl label secret owner-repo-secret-1 tekton/asa-code-repository-owner="owner" tekton/asa-code-repository-name="repo"
+```
+
+You point it out in your `tekton.yaml` file and when the CI is launched the
+secret would be automatically imported in the temporary namespace, which then
+you can reference in your pipeline.
+
+
 ## INSTALL
 
 ### Create a GitHub application
