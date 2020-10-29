@@ -81,14 +81,14 @@ class Github:
 
         return (response, json.loads(response.read().decode()))
 
-    def get_file_content(self, owner_repo: str, path: str) -> str:
+    def get_file_content(self, owner_repo: str, path: str) -> bytes:
         """Get file path contents from GITHUB API"""
         try:
             _, content = self.request("GET",
                                       f"/repos/{owner_repo}/contents/{path}")
         except GitHUBAPIException as error:
             if error.status and error.status == 404:
-                return ""
+                return b""
             raise error
         return base64.b64decode(content['content'])
 
