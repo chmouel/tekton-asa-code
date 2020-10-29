@@ -13,7 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 """Github Stuff"""
-
+import base64
 import datetime
 import http.client
 import json
@@ -80,6 +80,17 @@ class Github:
             )
 
         return (response, json.loads(response.read().decode()))
+
+    def get_file_content(self, owner_repo: str, path: str) -> str:
+        """Get file path contents from GITHUB API"""
+        try:
+            _, content = self.request("GET",
+                                      f"/repos/{owner_repo}/contents/{path}")
+        except GitHUBAPIException as error:
+            if error.status and error.status == 404:
+                return ""
+            raise error
+        return base64.b64decode(content['content'])
 
     def get_task_latest_version(self, repository: str, task: str) -> str:
         """Use the github api to retrieve the latest task verison from a repository"""
