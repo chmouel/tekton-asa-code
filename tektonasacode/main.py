@@ -10,22 +10,20 @@ import string
 import sys
 import tempfile
 import time
+import traceback
 
-from tektonasacode import github
-from tektonasacode import utils
-from tektonasacode import process_templates
-from tektonasacode import config
-
-CHECK_RUN_ID = None
-REPO_FULL_NAME = None
+from tektonasacode import config, github, process_templates, utils
 
 
 class TektonAsaCode:
     """Tekton as a Code main class"""
-    def __init__(self, github_token):
+    def __init__(self, github_token, github_json):
         self.utils = utils.Utils()
         self.github = github.Github(github_token)
         self.pcs = process_templates.Process(self.github)
+        self.check_run_id = None
+        self.repo_full_name = ""
+        self.github_json = github_json.replace("\n", " ")
 
     def github_checkout_pull_request(self, repo_owner_login, repo_html_url,
                                      pull_request_number, pull_request_sha):
@@ -120,14 +118,15 @@ class TektonAsaCode:
 
         return status, describe_output, report_output
 
-    def main(self, github_json):
+    def main(self):
         """main function"""
-        jeez = json.loads(github_json.replace("\n", " "))
+        jeez = json.loads(self.github_json)
+        self.repo_full_name = self.utils.get_key("repository.full_name", jeez)
+
         random_str = "".join(
             random.choices(string.ascii_letters + string.digits, k=2)).lower()
         pull_request_sha = self.utils.get_key("pull_request.head.sha", jeez)
         pull_request_number = self.utils.get_key("pull_request.number", jeez)
-        repo_full_name = self.utils.get_key("repository.full_name", jeez)
         repo_owner_login = self.utils.get_key("repository.owner.login", jeez)
         repo_html_url = self.utils.get_key("repository.html_url", jeez)
         namespace = f"pull-{pull_request_number}-{pull_request_sha[:5]}-{random_str}"
@@ -142,8 +141,11 @@ class TektonAsaCode:
 
         target_url = self.utils.get_openshift_console_url(namespace)
 
-        check_run = self.github.create_check_run(repo_full_name, target_url,
-                                                 pull_request_sha)
+        check_run = self.github.create_check_run(self.repo_full_name,
+                                                 target_url, pull_request_sha)
+
+        self.check_run_id = check_run['id']
+
         self.github_checkout_pull_request(repo_owner_login, repo_html_url,
                                           pull_request_number,
                                           pull_request_sha)
@@ -152,7 +154,7 @@ class TektonAsaCode:
         if not os.path.exists(config.TEKTON_ASA_CODE_DIR):
             # Set status as pending
             self.github.set_status(
-                repo_full_name,
+                self.repo_full_name,
                 check_run['id'],
                 "https://tenor.com/search/sad-cat-gifs",
                 conclusion='neutral',
@@ -174,7 +176,7 @@ class TektonAsaCode:
         else:
             message = f"❌👮‍♂️ Skipping running the CI since the user **{self.utils.get_key('pull_request.user.login', jeez)}** is not in the owner file or section"
             self.github.set_status(
-                repo_full_name,
+                self.repo_full_name,
                 check_run['id'],
                 "https://tenor.com/search/police-gifs",
                 conclusion="neutral",
@@ -187,7 +189,7 @@ class TektonAsaCode:
             )
             raise Exception(message)
 
-        self.create_temporary_namespace(namespace, repo_full_name,
+        self.create_temporary_namespace(namespace, self.repo_full_name,
                                         pull_request_number)
         self.pcs.apply(processed['templates'], namespace)
 
@@ -197,7 +199,7 @@ class TektonAsaCode:
         print(describe_output)
         # Set status as pending
         self.github.set_status(
-            repo_full_name,
+            self.repo_full_name,
             check_run["id"],
             # Only set target_url which goest to the namespace in case of failure,
             # since we delete the namespace in case of success.
@@ -213,3 +215,25 @@ class TektonAsaCode:
             f"kubectl delete ns {namespace}",
             "Cannot delete temporary namespace {namespace}",
         )
+
+    def runwrap(self):
+        """Wrap main() and catch errors to report if we can"""
+        try:
+            self.main()
+        except Exception as err:
+            exc_type, exc_value, exc_tb = sys.exc_info()
+            tracebackerr = traceback.format_exception(exc_type, exc_value,
+                                                      exc_tb)
+            if self.check_run_id:
+                self.github.set_status(
+                    repository_full_name=self.repo_full_name,
+                    check_run_id=self.check_run_id,
+                    target_url="https://tenor.com/search/sad-cat-gifs",
+                    conclusion="failure",
+                    output={
+                        "title": "CI Run: Failure",
+                        "summary": "Tekton asa code has failed 💣",
+                        "text": f'<pre>{"<br/>".join(tracebackerr)}</pre>',
+                    },
+                    status="completed")
+            raise err

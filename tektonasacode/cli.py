@@ -28,8 +28,8 @@ def run():
                         help="The Github token to do operation with")
 
     args = parser.parse_args()
-    tkaac = main.TektonAsaCode(args.github_token)
-    tkaac.main(args.github_json)
+    tkaac = main.TektonAsaCode(args.github_token, args.github_json)
+    tkaac.runwrap()
 
 
 if __name__ == "__main__":
