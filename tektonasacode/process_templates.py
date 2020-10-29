@@ -78,15 +78,12 @@ class Process:
 
         return allowed
 
-    def process_yaml_ini(
-        self,
-        yaml_file,
-        jeez,
-        parameters_extras,
-    ):
+    def process_yaml_ini(self, yaml_file, jeez, parameters_extras):
         """Process yaml ini files"""
         cfg = yaml.safe_load(open(yaml_file, 'r'))
         processed = {'templates': {}}
+        owner_repo = self.utils.get_key("repository.full_name", jeez)
+
         if 'tasks' in cfg:
             for task in cfg['tasks']:
                 if 'http' in task:
@@ -107,6 +104,28 @@ class Process:
                 processed['templates'][ret[0]] = ret[1]
 
         processed['allowed'] = self.process_owner_section_or_file(jeez)
+
+        # Only get secrets that belong to that owner/repo, so malicious user
+        # cannot get things they should not.
+        if 'secrets' in cfg:
+            # Do not pass input from cfg to kubectl_get or this could get
+            # exploited.
+            all_secrets_for_repo = self.utils.kubectl_get(
+                "secret",
+                output_type="yaml",
+                labels={
+                    "tekton/asa-code-repository-name":
+                    owner_repo.split("/")[1],
+                    "tekton/asa-code-repository-owner":
+                    owner_repo.split("/")[0]
+                })
+            for secret in cfg['secrets']:
+                for allsecretin in all_secrets_for_repo['items']:
+                    secretname = allsecretin['metadata']['name']
+                    if secretname == secret:
+                        processed['templates'][
+                            f"{secretname}.secret.yaml"] = yaml.safe_dump(
+                                allsecretin)
 
         if 'files' in cfg:
             for filepath in cfg['files']:

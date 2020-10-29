@@ -22,6 +22,10 @@ import time
 import urllib.error
 import urllib.request
 
+from typing import Optional, Dict
+
+import yaml
+
 
 # pylint: disable=unnecessary-pass
 class CouldNotFindConfigKeyException(Exception):
@@ -42,16 +46,41 @@ class Utils:
                                     check=True)
         except subprocess.CalledProcessError as exception:
             if check_error:
+                print(check_error)
                 raise exception
         return result
 
-    def get_config(self):
-        """Try to grab the config for tekton-asa-code and parse it as dict"""
-        output = self.execute(
-            "kubectl get configmaps tekton-asa-code -o json 2>/dev/null", )
-        if output.returncode != 0:
+    def kubectl_get(self,
+                    obj: str,
+                    output_type: str = "yaml",
+                    raw: bool = False,
+                    labels: Optional[dict] = None) -> Dict:
+        """Get an object"""
+        if labels:
+            label_str = " ".join(
+                [f"-l {label}={labels[label]}" for label in labels])
+        if output_type:
+            output_str = f"-o {output_type}"
+        _out = self.execute(
+            f"kubectl get {obj} {output_str} {label_str}",
+            check_error=f"Cannot run kubectl get {obj} {output_str} {label_str}"
+        )
+        if _out.returncode != 0:
             return {}
-        return json.loads(output.stdout.decode())["data"]
+        out = _out.stdout.decode()
+        if raw or not output_type:
+            return out
+        if output_type == "yaml":
+            ret = yaml.safe_load(out)
+        if output_type == "json":
+            ret = json.loads(out)
+
+        # Cleanup namespaces from all
+        for index in range(0, len(ret['items'])):
+            if 'metadata' in ret['items'][index] and 'namespace' in ret[
+                    'items'][index]['metadata']:
+                del ret['items'][index]['metadata']['namespace']
+        return ret
 
     @staticmethod
     def retrieve_url(url):
