@@ -22,8 +22,17 @@ from typing import Any, Dict, Tuple
 
 import pkg_resources
 
-GITHUB_API_URL = "api.github.com"
+GITHUB_API_URL = "https://api.github.com"
 COMMENT_ALLOWED_STRING = "/tekton ok-to-test"
+
+
+class GitHUBAPIException(Exception):
+    """Exceptions when GtiHUB API fails"""
+    status = None
+
+    def __init__(self, status, message):
+        self.status = status
+        super(GitHUBAPIException, self).__init__(message)
 
 
 class Github:
@@ -40,6 +49,8 @@ class Github:
                 params=None) -> (Tuple[http.client.HTTPResponse, Any]):
         """Execute a request to the GitHUB API, handling redirect"""
         if not url.startswith("http"):
+            if url[0] == "/":
+                url = url[1:]
             url = f"{self.github_api_url}/{url}"
 
         if not headers:
@@ -63,7 +74,8 @@ class Github:
 
         if response.status >= 400:
             headers.pop("Authorization", None)
-            raise Exception(
+            raise GitHUBAPIException(
+                response.status,
                 f"Error: {response.status} - {json.loads(response.read())} - {method} - {url} - {data} - {headers}"
             )
 
@@ -73,7 +85,7 @@ class Github:
         """Use the github api to retrieve the latest task verison from a repository"""
         _, catalog = self.request(
             "GET",
-            f"https://api.github.com/repos/{repository}/git/trees/master",
+            f"{self.github_api_url}/repos/{repository}/git/trees/master",
             params={
                 "recursive": "true",
             },
@@ -89,7 +101,7 @@ class Github:
                     version = (path.split("/")[2], tree["url"])
 
         if not version[1]:
-            raise Exception(
+            raise GitHUBAPIException(
                 "I could not find a task in '{repository}' for '{task}' ")
 
         print(f"Task {task} in {repository} latest version is {version[0]}")
@@ -105,7 +117,7 @@ class Github:
            member leaves a /tekton ok-to-test comments"""
         _, _orgs = self.request(
             "GET",
-            f"https://api.github.com/users/{pull_request_user_login}/orgs",
+            f"{self.github_api_url}/users/{pull_request_user_login}/orgs",
         )
         organizations = [user["login"] for user in _orgs]
         if organization in organizations:
@@ -138,7 +150,7 @@ class Github:
 
         _, jeez = self.request(
             "PATCH",
-            f"https://{self.github_api_url}/repos/{repository_full_name}/check-runs/{check_run_id}",
+            f"/repos/{repository_full_name}/check-runs/{check_run_id}",
             headers={"Accept": "application/vnd.github.antiope-preview+json"},
             data=data,
         )
@@ -162,7 +174,7 @@ class Github:
         }
         _, jeez = self.request(
             "POST",
-            f"https://{self.github_api_url}/repos/{repository_full_name}/check-runs",
+            f"{self.github_api_url}/repos/{repository_full_name}/check-runs",
             headers={"Accept": "application/vnd.github.antiope-preview+json"},
             data=data,
         )
