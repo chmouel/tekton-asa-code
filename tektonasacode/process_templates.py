@@ -26,6 +26,7 @@ class Process:
     def __init__(self, github_cls):
         self.utils = utils.Utils()
         self.github = github_cls
+        self.checked_repo = config.REPOSITORY_DIR
 
     def apply(self, processed_templates, namespace):
         """Apply templates from a dict of filename=>content"""
@@ -40,18 +41,28 @@ class Process:
             )
             os.remove(tmpfile)
 
-    def process_owner_section_or_file(self, pr_login, cfg, checked_repo):
-        """Process the owner section of config or a file"""
-        owner_file = os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR,
-                                  "OWNERS")
-        if 'owners' in cfg:
-            owners_allowed = cfg['owners']
-        elif os.path.exists(owner_file):
+    def process_owner_section_or_file(self, jeez):
+        """Process the owner section from config or a file on the tip branch"""
+        pr_login = self.utils.get_key("pull_request.user.login", jeez)
+        owner_repo = self.utils.get_key("pull_request.base.repo.full_name",
+                                        jeez)
+
+        owners_allowed = []
+        owner_content = self.github.get_file_content(
+            owner_repo, os.path.join(config.TEKTON_ASA_CODE_DIR, "OWNERS"))
+
+        if False and owner_content:
             owners_allowed = [
-                x.strip() for x in open(owner_file, 'r').readlines()
+                x.strip() for x in owner_content.decode("utf8").split("\n")
+                if x != ""
             ]
         else:
-            owners_allowed = []
+            owner_content = yaml.safe_load(
+                self.github.get_file_content(
+                    owner_repo,
+                    os.path.join(config.TEKTON_ASA_CODE_DIR, "tekton.yaml")))
+            if 'owners' in owner_content:
+                owners_allowed = owner_content['owners']
 
         # By default we deny unless explictely allowed
         allowed = False
@@ -64,10 +75,15 @@ class Process:
             else:
                 if owner == pr_login:
                     allowed = True
+
         return allowed
 
-    def process_yaml_ini(self, yaml_file, jeez, parameters_extras,
-                         checked_repo):
+    def process_yaml_ini(
+        self,
+        yaml_file,
+        jeez,
+        parameters_extras,
+    ):
         """Process yaml ini files"""
         cfg = yaml.safe_load(open(yaml_file, 'r'))
         processed = {'templates': {}}
@@ -90,14 +106,12 @@ class Process:
                                         name=url)
                 processed['templates'][ret[0]] = ret[1]
 
-        processed['allowed'] = self.process_owner_section_or_file(
-            self.utils.get_key("pull_request.user.login", jeez), cfg,
-            checked_repo)
+        processed['allowed'] = self.process_owner_section_or_file(jeez)
 
         if 'files' in cfg:
             for filepath in cfg['files']:
-                fpath = os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR,
-                                     filepath)
+                fpath = os.path.join(self.checked_repo,
+                                     config.TEKTON_ASA_CODE_DIR, filepath)
                 if not os.path.exists(fpath):
                     raise Exception(
                         f"{filepath} does not exists in {config.TEKTON_ASA_CODE_DIR} directory"
@@ -106,29 +120,27 @@ class Process:
                 processed['templates'][ret[0]] = ret[1]
         else:
             processed['templates'].update(
-                self.process_all_yaml_in_dir(checked_repo, jeez,
-                                             parameters_extras))
-
+                self.process_all_yaml_in_dir(jeez,
+                                             parameters_extras)['templates'])
         return processed
 
-    def process_all_yaml_in_dir(self, checked_repo, jeez, parameters_extras):
+    def process_all_yaml_in_dir(self, jeez, parameters_extras):
         """Process directory directly, not caring about stuff just getting every
         yaml files in there"""
         processed = {'templates': {}}
 
         processed['allowed'] = self.process_owner_section_or_file(
-            self.utils.get_key("pull_request.user.login", jeez), {},
-            checked_repo)
+            self.utils.get_key("pull_request.user.login", jeez))
 
         for filename in os.listdir(
-                os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR)):
+                os.path.join(self.checked_repo, config.TEKTON_ASA_CODE_DIR)):
 
             if filename.split(".")[-1] not in ["yaml", "yml"]:
                 continue
             if filename == "tekton.yaml":
                 continue
-            filename = os.path.join(checked_repo, config.TEKTON_ASA_CODE_DIR,
-                                    filename)
+            filename = os.path.join(self.checked_repo,
+                                    config.TEKTON_ASA_CODE_DIR, filename)
             ret = self.utils.kapply(
                 filename,
                 jeez,
@@ -137,14 +149,14 @@ class Process:
             processed['templates'][ret[0]] = ret[1]
         return processed
 
-    def process_tekton_dir(self, checked_repo, jeez, parameters_extras):
+    def process_tekton_dir(self, jeez, parameters_extras):
         """Apply templates according, check first for tekton.yaml and then
         process all yaml files in directory"""
         if os.path.exists(
-                f"{checked_repo}/{config.TEKTON_ASA_CODE_DIR}/tekton.yaml"):
+                f"{self.checked_repo}/{config.TEKTON_ASA_CODE_DIR}/tekton.yaml"
+        ):
             return self.process_yaml_ini(
-                f"{checked_repo}/{config.TEKTON_ASA_CODE_DIR}/tekton.yaml",
-                jeez, parameters_extras, checked_repo)
+                f"{self.checked_repo}/{config.TEKTON_ASA_CODE_DIR}/tekton.yaml",
+                jeez, parameters_extras)
 
-        return self.process_all_yaml_in_dir(checked_repo, jeez,
-                                            parameters_extras)
+        return self.process_all_yaml_in_dir(jeez, parameters_extras)

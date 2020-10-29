@@ -27,24 +27,25 @@ class TektonAsaCode:
         self.github = github.Github(github_token)
         self.pcs = process_templates.Process(self.github)
 
-    def github_checkout_pull_request(self, checked_repo, repo_owner_login,
-                                     repo_html_url, pull_request_number,
-                                     pull_request_sha):
+    def github_checkout_pull_request(self, repo_owner_login, repo_html_url,
+                                     pull_request_number, pull_request_sha):
         """Checkout a pull request from github"""
-        if not os.path.exists(checked_repo):
-            os.makedirs(checked_repo)
-            os.chdir(checked_repo)
+        if not os.path.exists(config.REPOSITORY_DIR):
+            os.makedirs(config.REPOSITORY_DIR)
+            os.chdir(config.REPOSITORY_DIR)
 
             exec_init = self.utils.execute("git init")
             if exec_init.returncode != 0:
-                print("Error creating a GitHUB repo in {checked_repo}")
+                print(
+                    "Error creating a GitHUB repo in {config.REPOSITORY_DIR}")
                 print(exec_init.stdout.decode())
                 print(exec_init.stderr.decode())
-
-        os.chdir(checked_repo)
+        else:
+            os.chdir(config.REPOSITORY_DIR)
+            exec_init = self.utils.execute("git remote remove origin")
 
         cmds = [
-            f"git remote add origin https://{repo_owner_login}:{self.github.token}@{repo_html_url.replace('https://', '')}",
+            f"git remote add -f origin https://{repo_owner_login}:{self.github.token}@{repo_html_url.replace('https://', '')}",
             f"git fetch origin refs/pull/{pull_request_number}/head",
             f"git reset --hard {pull_request_sha}",
         ]
@@ -121,7 +122,6 @@ class TektonAsaCode:
 
     def main(self, github_json):
         """main function"""
-        checked_repo = "/tmp/repository"
         jeez = json.loads(github_json.replace("\n", " "))
         random_str = "".join(
             random.choices(string.ascii_letters + string.digits, k=2)).lower()
@@ -144,8 +144,8 @@ class TektonAsaCode:
 
         check_run = self.github.create_check_run(repo_full_name, target_url,
                                                  pull_request_sha)
-        self.github_checkout_pull_request(checked_repo, repo_owner_login,
-                                          repo_html_url, pull_request_number,
+        self.github_checkout_pull_request(repo_owner_login, repo_html_url,
+                                          pull_request_number,
                                           pull_request_sha)
 
         # Exit if there is not tekton directory
@@ -168,8 +168,7 @@ class TektonAsaCode:
             print("No tekton directory has been found 😿")
             sys.exit(0)
 
-        processed = self.pcs.process_tekton_dir(checked_repo, jeez,
-                                                parameters_extras)
+        processed = self.pcs.process_tekton_dir(jeez, parameters_extras)
         if processed['allowed']:
             print("✅ User is allowed to run this PR")
         else:

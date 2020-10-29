@@ -20,3 +20,5 @@ TEKTON_ASA_CODE_DIR = os.environ.get("TEKTON_ASA_CODE_DIR", ".tekton")
 CATALOGS = {
     "official": "tektoncd/catalog",
 }
+
+REPOSITORY_DIR = "/tmp/repository"
