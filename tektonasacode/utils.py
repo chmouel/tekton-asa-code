@@ -43,10 +43,14 @@ class Utils:
         try:
             result = subprocess.run(["/bin/sh", "-c", command],
                                     stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT,
                                     check=True)
         except subprocess.CalledProcessError as exception:
             if check_error:
                 print(check_error)
+                print(
+                    f"Status code: {exception.returncode}: Output: \n{exception.output}"
+                )
                 raise exception
         return result
 

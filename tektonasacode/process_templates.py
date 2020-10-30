@@ -37,7 +37,7 @@ class Process:
             open(tmpfile, "w").write(content)
             self.utils.execute(
                 f"kubectl apply -f {tmpfile} -n {namespace}",
-                "Cannot apply {filename} in {namespace}",
+                f"Cannot apply {filename} in {namespace}",
             )
             os.remove(tmpfile)
 
