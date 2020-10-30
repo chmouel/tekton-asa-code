@@ -44,8 +44,13 @@ class Process:
     def process_owner_section_or_file(self, jeez):
         """Process the owner section from config or a file on the tip branch"""
         pr_login = self.utils.get_key("pull_request.user.login", jeez)
+        repo_owner = self.utils.get_key("repository.owner.login", jeez)
         owner_repo = self.utils.get_key("pull_request.base.repo.full_name",
                                         jeez)
+
+        # Always allow the repo owner to submit.
+        if repo_owner == owner_repo:
+            return True
 
         owners_allowed = []
         owner_content = self.github.get_file_content(
@@ -66,6 +71,7 @@ class Process:
 
         # By default we deny unless explictely allowed
         allowed = False
+
         for owner in owners_allowed:
             # If the line starts with a @ it means it's a github
             # organization, check if the user is part of it

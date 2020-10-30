@@ -120,7 +120,8 @@ It will directly install the URL (this do not have to be a task it can be any re
 
 ## OWNERSHIP
 
-- By default all pull request are denied unless explictely allowed.
+- By default all pull request are denied unless the repo owner is submitting
+  them or explictely allowed.
 - tekton-asa-code will try to find a `OWNERS` file at the root of the `.tekton`
   directory **in the main branch (i.e: master) not in the submitted PR**.
 - If the user who submitted the PR is in that file it will be allowed.
