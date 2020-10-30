@@ -61,7 +61,7 @@ class Process:
                 self.github.get_file_content(
                     owner_repo,
                     os.path.join(config.TEKTON_ASA_CODE_DIR, "tekton.yaml")))
-            if 'owners' in owner_content:
+            if owner_content and 'owners' in owner_content:
                 owners_allowed = owner_content['owners']
 
         # By default we deny unless explictely allowed
