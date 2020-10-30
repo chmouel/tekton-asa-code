@@ -49,7 +49,7 @@ class Process:
                                         jeez)
 
         # Always allow the repo owner to submit.
-        if repo_owner == owner_repo:
+        if repo_owner == pr_login:
             return True
 
         owners_allowed = []
