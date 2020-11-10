@@ -1,10 +1,12 @@
 """Test when processing templates"""
 import copy
+import io
 import os
 
 import pytest
 from tektonasacode import config
 from tektonasacode import process_templates as pt
+from tektonasacode import utils
 
 github_json_pr = {
     'pull_request': {
@@ -150,3 +152,63 @@ def test_process_allowed_organizations(dodo):
     process.checked_repo = dodo
     ret = process.process_tekton_dir(github_json_pr, {})
     assert ret["allowed"]
+
+
+def test_process_yaml_ini(tmp_path, dodo):
+    class FakeGithub:
+        def get_task_latest_version(self, repo, name):
+            return "0.0.7"
+
+        def get_file_content(self, owner_repo, path):
+            return b''
+
+    class FakeUtils(utils.Utils):
+        @staticmethod
+        def retrieve_url(url):
+            """
+            Retrieve a fake url
+            """
+            taskname = tmp_path / os.path.basename(url).replace(".yaml", "")
+            taskname.write_text("""---
+            kind: Pipeline
+            metadata:
+                name: fakepipeline
+            """)
+            return taskname
+
+        @staticmethod
+        def kubectl_get(type, output_type, labels):
+            return {"items": [{"metadata": {"name": "shuss"}}]}
+
+    (dodo / config.TEKTON_ASA_CODE_DIR / "pr_use_me.yaml").write("--- ")
+    tektonyaml = tmp_path / "tekton.yaml"
+    tektonyaml.write_text("""---
+    tasks:
+      - task1
+      - task2:latest
+      - task3:0.2
+      - https://this.is.not/a/repo/a.xml
+    
+    secrets:
+      - shuss
+
+    files:
+      - pr_use_me.yaml
+    """)
+    process = pt.Process(FakeGithub())
+    process.checked_repo = dodo
+    process.utils = FakeUtils()
+    processed = process.process_yaml_ini(tektonyaml, github_json_pr, {})
+
+    # Assert tasks processing
+    tasks = [
+        os.path.dirname(x.replace(config.GITHUB_RAW_URL + "/", ''))
+        for x in list(processed['templates'])
+    ]
+    assert tasks[0] == "task1/0.0.7"
+    assert tasks[1] == "task2/0.0.7"
+    assert tasks[2] == "task3/0.2"
+    assert tasks[3].startswith("https")
+    assert list(processed['templates'])[4] == "shuss.secret.yaml"
+    assert os.path.basename(list(
+        processed['templates'])[5]) == "pr_use_me.yaml"
