@@ -10,3 +10,6 @@ imagepush: image push
 
 lint: ## check style with flake8
 	pylint tektonasacode
+
+coverage:
+	pytest --cov-report html --cov=tektonasacode tests/
