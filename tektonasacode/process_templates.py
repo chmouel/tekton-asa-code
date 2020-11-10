@@ -55,8 +55,7 @@ class Process:
         owners_allowed = []
         owner_content = self.github.get_file_content(
             owner_repo, os.path.join(config.TEKTON_ASA_CODE_DIR, "OWNERS"))
-
-        if False and owner_content:
+        if owner_content:
             owners_allowed = [
                 x.strip() for x in owner_content.decode("utf8").split("\n")
                 if x != ""
@@ -156,9 +155,7 @@ class Process:
         """Process directory directly, not caring about stuff just getting every
         yaml files in there"""
         processed = {'templates': {}}
-
-        processed['allowed'] = self.process_owner_section_or_file(
-            self.utils.get_key("pull_request.user.login", jeez))
+        processed['allowed'] = self.process_owner_section_or_file(jeez)
 
         for filename in os.listdir(
                 os.path.join(self.checked_repo, config.TEKTON_ASA_CODE_DIR)):
