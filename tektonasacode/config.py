@@ -22,3 +22,5 @@ CATALOGS = {
 }
 
 REPOSITORY_DIR = "/tmp/repository"
+
+GITHUB_RAW_URL = "https://raw.githubusercontent.com/tektoncd/catalog/master/task"

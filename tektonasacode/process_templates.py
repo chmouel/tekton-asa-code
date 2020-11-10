@@ -103,8 +103,7 @@ class Process:
                         name = task
                         version = self.github.get_task_latest_version(
                             "tektoncd/catalog", name)
-                    raw_url = "https://raw.githubusercontent.com/tektoncd/catalog/master/task"
-                    url = f"{raw_url}/{name}/{version}/{name}.yaml"
+                    url = f"{config.GITHUB_RAW_URL}/{name}/{version}/{name}.yaml"
                 ret = self.utils.kapply(self.utils.retrieve_url(url),
                                         jeez,
                                         parameters_extras,
