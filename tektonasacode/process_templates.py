@@ -97,10 +97,12 @@ class Process:
                 if 'http' in task:
                     url = task
                 else:
-                    if ':' in task:
+                    if ':' in task and not task.endswith(":latest"):
                         name, version = task.split(":")
                     else:
-                        name = task
+                        name = task.replace(
+                            ":latest",
+                            "") if task.endswith(":latest") else task
                         version = self.github.get_task_latest_version(
                             "tektoncd/catalog", name)
                     url = f"{config.GITHUB_RAW_URL}/{name}/{version}/{name}.yaml"
@@ -133,7 +135,6 @@ class Process:
                         processed['templates'][
                             f"{secretname}.secret.yaml"] = yaml.safe_dump(
                                 allsecretin)
-
         if 'files' in cfg:
             for filepath in cfg['files']:
                 fpath = os.path.join(self.checked_repo,
