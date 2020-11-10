@@ -68,7 +68,6 @@ class Process:
                     os.path.join(config.TEKTON_ASA_CODE_DIR, "tekton.yaml")))
             if owner_content and 'owners' in owner_content:
                 owners_allowed = owner_content['owners']
-
         # By default we deny unless explictely allowed
         allowed = False
 
@@ -87,8 +86,12 @@ class Process:
     def process_yaml_ini(self, yaml_file, jeez, parameters_extras):
         """Process yaml ini files"""
         cfg = yaml.safe_load(open(yaml_file, 'r'))
+        if not cfg:
+            return {}
+
         processed = {'templates': {}}
-        owner_repo = self.utils.get_key("repository.full_name", jeez)
+        owner_repo = self.utils.get_key("pull_request.base.repo.full_name",
+                                        jeez)
 
         if 'tasks' in cfg:
             for task in cfg['tasks']:
@@ -180,8 +183,9 @@ class Process:
         if os.path.exists(
                 f"{self.checked_repo}/{config.TEKTON_ASA_CODE_DIR}/tekton.yaml"
         ):
-            return self.process_yaml_ini(
+            processed_yaml_ini = self.process_yaml_ini(
                 f"{self.checked_repo}/{config.TEKTON_ASA_CODE_DIR}/tekton.yaml",
                 jeez, parameters_extras)
-
+            if processed_yaml_ini:
+                return processed_yaml_ini
         return self.process_all_yaml_in_dir(jeez, parameters_extras)
