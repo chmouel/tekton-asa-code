@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Take the last pipelineRun (or the pipelinerun you specify as argument) 
+# and dump the github_json and token to /tmp, you can then launch manually the
+# tkaac cli with the argument to debug the code :
+#
+# tkaac-grab-parameters && python tektonasacode/cli.py "$(cat /tmp/pr.json)" $(cat /tmp/pr.token)
+set -e
+namespace="tekton-asa-code"
+
+type -p jq >/dev/null || { echo "need jq installed"; exit 1 ;}
+type -p tkn >/dev/null || { echo "need tkn installed"; exit 1 ;}
+R=/tmp/.pr.json
+P=/tmp/pr.json
+T=/tmp/pr.token
+
+latest=$1
+[[ -z ${1} ]] && {
+	latest="$(tkn pr -n ${namespace} ls --limit=1 --no-headers -o name|sed 's/.*\///')"
+	echo -n "Using parameters from ${latest}: "
+}
+
+kubectl -n ${namespace} get pr ${latest} -o json > ${R}
+
+jq -r '.spec.params[] | select(.name=="github_json").value' "${R}"|tr -d '\n' > "${P}"
+jq -r '.status.taskRuns[].status.taskResults[]? | select(.name=="token").value' ${R} > "${T}" 
+
+echo "success."
+echo "github_json and github_token are saved in ${P} and ${T}"
