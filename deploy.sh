@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Configure this to your own route
-PUBLIC_ROUTE_HOSTNAME=${PUBLIC_ROUTE_HOSTNAME:-tektonic.apps.tekton.openshift.chmouel.com}
+PUBLIC_ROUTE_HOSTNAME=${PUBLIC_ROUTE_HOSTNAME:-tektonic.apps.psipipelines.devcluster.openshift.com}
+
 GITHUB_APP_PRIVATE_KEY=${GITHUB_APP_PRIVATE_KEY:-./tmp/github.app.key}
 GITHUB_APP_ID=${GITHUB_APP_ID:-"81262"}
 GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET:-}
@@ -14,8 +15,13 @@ elif type -p kubectl >/dev/null 2>/dev/null;then
     DEFAULT_KB=kubectl
 fi
 
+[[ -e ${GITHUB_APP_PRIVATE_KEY} ]] || {
+	echo "I could not find a private key in ${GITHUB_APP_PRIVATE_KEY} please install it from your github app"
+	exit 1
+}
+
 if ! type -p ${KB} >/dev/null;then
-    echo "Couldn't find a ${DEFAULT_KB} in the path, please set the KB accordingly "
+    echo "Couldn't find a ${DEFAULT_KB} in the path, please set the kubectl or oc binary accordingly "
     exit 1
 fi
 
@@ -87,7 +93,7 @@ function openshift_expose_service () {
 function create_secret() {
     local s=${1}
     local literal=${2}
-    [[ -n ${recreate} ]] && ${KB} delete secret ${s}
+    ${KB} delete secret ${s}
     ${KB} get secret ${s} >/dev/null 2>/dev/null || \
         ${KB} create secret generic ${s} --from-literal "${literal}"
 }
