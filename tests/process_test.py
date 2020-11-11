@@ -1,7 +1,9 @@
 """Test when processing templates"""
+# pylint: disable=redefined-outer-name
+
 import copy
-import io
 import os
+from typing import Optional
 
 import pytest
 from tektonasacode import config
@@ -28,14 +30,14 @@ github_json_pr = {
 
 
 @pytest.fixture
-def dodo(tmpdir):
+def fixtrepo(tmpdir):
     """Create temporary tekton repository"""
     repo = tmpdir.mkdir("repository")
 
     tektondir = repo.mkdir(".tekton")
 
     template1 = tektondir.join("pipeline.yaml")
-    template1.write("""--- 
+    template1.write("""--- \n
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
@@ -53,32 +55,36 @@ spec:
     yield repo
 
 
-def test_process_not_allowed_no_owner_not_same_submitter_owner(dodo):
+def test_process_not_allowed_no_owner_not_same_submitter_owner(fixtrepo):
+    """Test processing tempaltes not allowed because submitter is not the same as repo owner"""
     class FakeGithub:
-        def get_file_content(self, owner_repo, path):
+        """Fake Github Class"""
+        def get_file_content(self, owner_repo, path):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
             return b''
 
     # Add a file to make sure we check we skip those files that are not ending in yaml or are OWNERS files
-    dodo.join(config.TEKTON_ASA_CODE_DIR, "README.md").write("Hello Moto")
+    fixtrepo.join(config.TEKTON_ASA_CODE_DIR, "README.md").write("Hello Moto")
     # Make sure we skip tekton.yaml and only parsing if needed (empty here)
-    dodo.join(config.TEKTON_ASA_CODE_DIR, "tekton.yaml").write("---")
+    fixtrepo.join(config.TEKTON_ASA_CODE_DIR, "tekton.yaml").write("---")
 
     github_class = FakeGithub()
     process = pt.Process(github_class)
-    process.checked_repo = dodo
+    process.checked_repo = fixtrepo
 
     ret = process.process_tekton_dir(github_json_pr, {})
     assert not ret["allowed"]
 
 
-def test_process_allowed_same_owner_submitter(dodo):
+def test_process_allowed_same_owner_submitter(fixtrepo):
+    """Test processing allowed because submitter is the same as repo owner"""
     class FakeGithub:
-        def get_file_content(self, owner_repo, path):
+        """Fake Github Class"""
+        def get_file_content(self, owner_repo, path):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
             return b''
 
     github_class = FakeGithub()
     process = pt.Process(github_class)
-    process.checked_repo = dodo
+    process.checked_repo = fixtrepo
 
     jeez = copy.deepcopy(github_json_pr)
     jeez['pull_request']['user']['login'] = jeez['repository']['owner'][
@@ -88,23 +94,25 @@ def test_process_allowed_same_owner_submitter(dodo):
     assert ret["allowed"]
 
 
-def test_process_allowed_owner_file(dodo):
+def test_process_allowed_owner_file(fixtrepo):
     """Allowed user via the OWNER file in github repo from parent branch."""
     class FakeGithub:
-        def get_file_content(self, owner_repo, path):
+        """Fake Github Class"""
+        def get_file_content(self, owner_repo, path):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
             return b'foo'
 
     github_class = FakeGithub()
     process = pt.Process(github_class)
-    process.checked_repo = dodo
+    process.checked_repo = fixtrepo
     ret = process.process_tekton_dir(github_json_pr, {})
     assert ret["allowed"]
 
 
-def test_process_allowed_tekton_yaml(dodo):
+def test_process_allowed_tekton_yaml(fixtrepo):
     """Allowed user via the owner section of tekton.yaml in github repo parent branch."""
     class FakeGithub:
-        def get_file_content(self, owner_repo, path):
+        """Fake Github Class"""
+        def get_file_content(self, owner_repo, path):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
             if path == os.path.join(config.TEKTON_ASA_CODE_DIR, "tekton.yaml"):
                 return """---
                 owners:
@@ -114,15 +122,16 @@ def test_process_allowed_tekton_yaml(dodo):
 
     github_class = FakeGithub()
     process = pt.Process(github_class)
-    process.checked_repo = dodo
+    process.checked_repo = fixtrepo
     ret = process.process_tekton_dir(github_json_pr, {})
     assert ret["allowed"]
 
 
-def test_process_allowed_organizations(dodo):
+def test_process_allowed_organizations(fixtrepo):
     """Allowed user via the owner section of tekton.yaml where the user belong to allowed org."""
     class FakeGithubTektonYaml:
-        def get_file_content(self, owner_repo, path):
+        """Fake Github Class"""
+        def get_file_content(self, owner_repo, path):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
             if path == os.path.join(config.TEKTON_ASA_CODE_DIR, "tekton.yaml"):
                 return b"""---
                 owners:
@@ -130,39 +139,43 @@ def test_process_allowed_organizations(dodo):
                 """
             return b''
 
-        def check_organization_of_user(self, org, pruserlogin):
+        def check_organization_of_user(self, org, pruserlogin):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
             return True
 
     process = pt.Process(FakeGithubTektonYaml())
-    process.checked_repo = dodo
+    process.checked_repo = fixtrepo
 
     ret = process.process_tekton_dir(github_json_pr, {})
     assert ret["allowed"]
 
     class FakeGithubOwners:
-        def get_file_content(self, owner_repo, path):
+        """Fake Github Class"""
+        def get_file_content(self, owner_repo, path):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
             if path == os.path.join(config.TEKTON_ASA_CODE_DIR, "OWNERS"):
                 return b"""@fakeorg"""
             return b""
 
-        def check_organization_of_user(self, org, pruserlogin):
+        def check_organization_of_user(self, org, pruserlogin):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
             return True
 
     process = pt.Process(FakeGithubOwners())
-    process.checked_repo = dodo
+    process.checked_repo = fixtrepo
     ret = process.process_tekton_dir(github_json_pr, {})
     assert ret["allowed"]
 
 
-def test_process_yaml_ini(tmp_path, dodo):
+def test_process_yaml_ini(tmp_path, fixtrepo):
+    """Test processing all fields in tekton.yaml"""
     class FakeGithub:
-        def get_task_latest_version(self, repo, name):
+        """Fake Github class"""
+        def get_task_latest_version(self, repo, name):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
             return "0.0.7"
 
-        def get_file_content(self, owner_repo, path):
+        def get_file_content(self, owner_repo, path):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
             return b''
 
     class FakeUtils(utils.Utils):
+        """Fake Utils class"""
         @staticmethod
         def retrieve_url(url):
             """
@@ -176,11 +189,14 @@ def test_process_yaml_ini(tmp_path, dodo):
             """)
             return taskname
 
-        @staticmethod
-        def kubectl_get(type, output_type, labels):
+        def kubectl_get(self,
+                        obj: str,
+                        output_type: str = "yaml",
+                        raw: bool = False,
+                        labels: Optional[dict] = None):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
             return {"items": [{"metadata": {"name": "shuss"}}]}
 
-    (dodo / config.TEKTON_ASA_CODE_DIR / "pr_use_me.yaml").write("--- ")
+    (fixtrepo / config.TEKTON_ASA_CODE_DIR / "pr_use_me.yaml").write("--- ")
     tektonyaml = tmp_path / "tekton.yaml"
     tektonyaml.write_text("""---
     tasks:
@@ -196,7 +212,7 @@ def test_process_yaml_ini(tmp_path, dodo):
       - pr_use_me.yaml
     """)
     process = pt.Process(FakeGithub())
-    process.checked_repo = dodo
+    process.checked_repo = fixtrepo
     process.utils = FakeUtils()
     processed = process.process_yaml_ini(tektonyaml, github_json_pr, {})
 

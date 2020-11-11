@@ -59,6 +59,9 @@ class Utils:
                     raw: bool = False,
                     labels: Optional[dict] = None) -> Dict:
         """Get an object"""
+        output_str = ''
+        label_str = ''
+        ret = ''
         if labels:
             label_str = " ".join(
                 [f"-l {label}={labels[label]}" for label in labels])
