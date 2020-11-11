@@ -93,7 +93,7 @@ function openshift_expose_service () {
 function create_secret() {
     local s=${1}
     local literal=${2}
-    [[ -n ${recreate} ]] && ${KB} delete secret ${s}
+    ${KB} delete secret ${s}
     ${KB} get secret ${s} >/dev/null 2>/dev/null || \
         ${KB} create secret generic ${s} --from-literal "${literal}"
 }
