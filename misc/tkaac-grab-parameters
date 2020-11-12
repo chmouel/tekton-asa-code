@@ -26,3 +26,9 @@ jq -r '.status.taskRuns[].status.taskResults[]? | select(.name=="token").value' 
 
 echo "success."
 echo "github_json and github_token are saved in ${P} and ${T}"
+
+echo -e "\nPR Detail:\n---------\n"
+echo -n "Title: "
+jq -r '.pull_request.title' ${P}
+echo -n "URL: "
+jq -r '.repository.html_url + "/pull/" + (.number | tostring)' ${P}
