@@ -104,7 +104,7 @@ class Process:
                             ":latest",
                             "") if task.endswith(":latest") else task
                         version = self.github.get_task_latest_version(
-                            "tektoncd/catalog", name)
+                            config.TEKTON_CATALOG_REPOSITORY, name)
                     url = f"{config.GITHUB_RAW_URL}/{name}/{version}/{name}.yaml"
                 ret = self.utils.kapply(self.utils.retrieve_url(url),
                                         jeez,
