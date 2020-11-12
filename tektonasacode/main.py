@@ -35,7 +35,8 @@ class TektonAsaCode:
             exec_init = self.utils.execute("git init")
             if exec_init.returncode != 0:
                 print(
-                    "Error creating a GitHUB repo in {config.REPOSITORY_DIR}")
+                    "😞 Error creating a GitHUB repo in {config.REPOSITORY_DIR}"
+                )
                 print(exec_init.stdout.decode())
                 print(exec_init.stderr.decode())
         else:
@@ -59,7 +60,7 @@ class TektonAsaCode:
         """Create a temporary namespace and labels"""
         self.utils.execute(f"kubectl create ns {namespace}",
                            "Cannot create a temporary namespace")
-        print(f"Namespace {namespace} has been created")
+        print(f"🚜 Namespace {namespace} has been created")
 
         # Apply label!
         self.utils.execute(
@@ -167,7 +168,7 @@ class TektonAsaCode:
                     "text":
                     f"No tekton-asa-code directory '{config.TEKTON_ASA_CODE_DIR}' has been found in this repository 😿",
                 })
-            print("No tekton directory has been found 😿")
+            print("😿 No tekton directory has been found")
             sys.exit(0)
 
         processed = self.pcs.process_tekton_dir(jeez, parameters_extras)
