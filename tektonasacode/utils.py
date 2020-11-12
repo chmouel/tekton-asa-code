@@ -113,7 +113,7 @@ class Utils:
     def stream(command, filename, check_error=""):
         """Stream command"""
         with io.open(filename, "wb") as writer, io.open(filename, "rb",
-                                                        1) as reader:
+                                                        0) as reader:
             try:
                 process = subprocess.Popen(command.split(" "), stdout=writer)
             except subprocess.CalledProcessError as exception:
