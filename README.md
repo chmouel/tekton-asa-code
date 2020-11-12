@@ -137,6 +137,21 @@ It will directly install the URL (this do not have to be a task it can be any re
       - other_user_outside_of_tektoncd_github_org
   ```
 
+## Moulinette (bundle all tekton files in a single `PipelineRun`)
+
+tekton-asa-code has support for `moulinette`, which mean when we see a bunch of
+files in the `.tekton` repo we concatenate together to make one single
+pipelinerun with taskSpec and PipelineRef to make it unique and ensure that we
+don't have any conflicts when running in a single namespace (NIP yet).
+
+It is (currently) disabled by default and can be only enabled if you specify the directive :
+
+```yaml
+bundled: true
+```
+
+In your `tekton.yaml` file.
+
 ## SECRETS
 
 You can reference a secret in your `tekton.yaml` :

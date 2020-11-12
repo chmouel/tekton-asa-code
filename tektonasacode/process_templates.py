@@ -15,8 +15,10 @@
 """Do some processing of the templates"""
 import os
 import tempfile
+from typing import Dict
 
 import yaml
+from tektonbundle import tektonbundle
 
 from tektonasacode import config, utils
 
@@ -27,6 +29,7 @@ class Process:
         self.utils = utils.Utils()
         self.github = github_cls
         self.checked_repo = config.REPOSITORY_DIR
+        self.moulinette = False
 
     def apply(self, processed_templates, namespace):
         """Apply templates from a dict of filename=>content"""
@@ -36,8 +39,8 @@ class Process:
             tmpfile = tempfile.NamedTemporaryFile(delete=False).name
             open(tmpfile, "w").write(content)
             self.utils.execute(
-                f"kubectl apply -f {tmpfile} -n {namespace}",
-                f"Cannot apply {filename} in {namespace}",
+                f"kubectl create -f {tmpfile} -n {namespace}",
+                f"Cannot create {filename} in {namespace}",
             )
             os.remove(tmpfile)
 
@@ -86,11 +89,14 @@ class Process:
         """Process yaml ini files"""
         cfg = yaml.safe_load(open(yaml_file, 'r'))
         if not cfg:
-            return {}
+            return {'allowed': False, 'templates': []}
 
         processed = {'templates': {}}
         owner_repo = self.utils.get_key("pull_request.base.repo.full_name",
                                         jeez)
+
+        if 'bundled' in cfg and cfg['bundled']:
+            self.moulinette = True
 
         if 'tasks' in cfg:
             for task in cfg['tasks']:
@@ -159,24 +165,45 @@ class Process:
 
         for filename in os.listdir(
                 os.path.join(self.checked_repo, config.TEKTON_ASA_CODE_DIR)):
-
             if filename.split(".")[-1] not in ["yaml", "yml"]:
                 continue
             if filename == "tekton.yaml":
                 continue
             filename = os.path.join(self.checked_repo,
                                     config.TEKTON_ASA_CODE_DIR, filename)
-            ret = self.utils.kapply(
-                filename,
-                jeez,
-                parameters_extras,
-                name=f'{config.TEKTON_ASA_CODE_DIR}/{filename}')
+            ret = self.utils.kapply(filename, jeez, parameters_extras)
             processed['templates'][ret[0]] = ret[1]
+
         return processed
+
+    def mouline_this(self, templates: Dict[str, str]):  # pylint: disable=no-self-use
+        """Takes the templates"""
+        bundled = []
+        print("🍝 Files bundled: ")
+        for template in templates:
+            if template.startswith("https://"):
+                local_path = os.path.join(config.REPOSITORY_DIR,
+                                          config.TEKTON_ASA_CODE_DIR,
+                                          os.path.basename(template))
+                open(local_path, 'w').write(templates[template])
+                bundled.append(local_path)
+                print(" • " +
+                      template.replace(config.GITHUB_RAW_URL + "/", ""))
+            else:
+                print(" • " +
+                      template.replace(config.REPOSITORY_DIR + "/", ""))
+                bundled.append(template)
+        bundled = tektonbundle.parse(bundled, parameters=[], skip_inlining=[])
+        thebundle = f"--- \n{bundled['bundle']}--- \n"
+        thebundle += "--- \n".join(bundled['ignored_not_k8'] +
+                                   bundled['ignored_not_tekton'])
+        return {'bundled-file.yaml': thebundle}
 
     def process_tekton_dir(self, jeez, parameters_extras):
         """Apply templates according, check first for tekton.yaml and then
         process all yaml files in directory"""
+        ret = {}
+
         if os.path.exists(
                 f"{self.checked_repo}/{config.TEKTON_ASA_CODE_DIR}/tekton.yaml"
         ):
@@ -184,5 +211,11 @@ class Process:
                 f"{self.checked_repo}/{config.TEKTON_ASA_CODE_DIR}/tekton.yaml",
                 jeez, parameters_extras)
             if processed_yaml_ini:
-                return processed_yaml_ini
-        return self.process_all_yaml_in_dir(jeez, parameters_extras)
+                ret = processed_yaml_ini
+        else:
+            ret = self.process_all_yaml_in_dir(jeez, parameters_extras)
+
+        if self.moulinette and ret['templates']:
+            ret['templates'] = self.mouline_this(ret['templates'])
+
+        return ret

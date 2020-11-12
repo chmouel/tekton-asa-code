@@ -1,5 +1,5 @@
 """Test when processing templates"""
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name,too-few-public-methods
 
 import copy
 import os
@@ -36,8 +36,8 @@ def fixtrepo(tmpdir):
 
     tektondir = repo.mkdir(".tekton")
 
-    template1 = tektondir.join("pipeline.yaml")
-    template1.write("""--- \n
+    pipeline = tektondir.join("pipeline.yaml")
+    pipeline.write("""--- \n
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
@@ -50,7 +50,29 @@ spec:
           steps:
             - name: hello-moto
               image: scratch
-
+      - name: hello2
+        taskRef:
+            name: task-hello-moto2
+     """)
+    task = tektondir.join("task.yaml")
+    task.write("""---
+    apiVersion: tekton.dev/v1beta1
+    kind: Task
+    metadata:
+        name: task-hello-moto2
+    spec:
+      steps:
+      - name: hello-moto2
+        image: scratch2
+    """)
+    configmap = tektondir.join("configmap.yaml")
+    configmap.write("""---
+    apiVersion: v1
+    kind: Configmap
+    metadata:
+        name: configmap
+    data:
+        hello: "moto"
     """)
     yield repo
 
@@ -67,8 +89,7 @@ def test_process_not_allowed_no_owner_not_same_submitter_owner(fixtrepo):
     # Make sure we skip tekton.yaml and only parsing if needed (empty here)
     fixtrepo.join(config.TEKTON_ASA_CODE_DIR, "tekton.yaml").write("---")
 
-    github_class = FakeGithub()
-    process = pt.Process(github_class)
+    process = pt.Process(FakeGithub())
     process.checked_repo = fixtrepo
 
     ret = process.process_tekton_dir(github_json_pr, {})
@@ -82,8 +103,7 @@ def test_process_allowed_same_owner_submitter(fixtrepo):
         def get_file_content(self, owner_repo, path):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
             return b''
 
-    github_class = FakeGithub()
-    process = pt.Process(github_class)
+    process = pt.Process(FakeGithub())
     process.checked_repo = fixtrepo
 
     jeez = copy.deepcopy(github_json_pr)
@@ -101,8 +121,7 @@ def test_process_allowed_owner_file(fixtrepo):
         def get_file_content(self, owner_repo, path):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
             return b'foo'
 
-    github_class = FakeGithub()
-    process = pt.Process(github_class)
+    process = pt.Process(FakeGithub())
     process.checked_repo = fixtrepo
     ret = process.process_tekton_dir(github_json_pr, {})
     assert ret["allowed"]
@@ -120,11 +139,26 @@ def test_process_allowed_tekton_yaml(fixtrepo):
                 """
             return b''
 
-    github_class = FakeGithub()
-    process = pt.Process(github_class)
+    process = pt.Process(FakeGithub())
     process.checked_repo = fixtrepo
     ret = process.process_tekton_dir(github_json_pr, {})
     assert ret["allowed"]
+
+
+def test_process_via_moulinette(fixtrepo):
+    """Test that the moulinette is working (via tektonbundle)"""
+    class FakeGithub:
+        """fake Github like a champ"""
+        def get_file_content(self, owner_repo, path):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
+            return b''
+
+    (fixtrepo / config.TEKTON_ASA_CODE_DIR / "tekton.yaml").write("""---
+    bundled: true
+    """)
+    process = pt.Process(FakeGithub())
+    process.checked_repo = fixtrepo
+    ret = process.process_tekton_dir(github_json_pr, {})
+    assert 'bundled-file.yaml' in ret['templates']
 
 
 def test_process_allowed_organizations(fixtrepo):
@@ -204,7 +238,7 @@ def test_process_yaml_ini(tmp_path, fixtrepo):
       - task2:latest
       - task3:0.2
       - https://this.is.not/a/repo/a.xml
-    
+
     secrets:
       - shuss
 
