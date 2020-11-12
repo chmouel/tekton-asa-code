@@ -17,10 +17,11 @@ import os
 
 TEKTON_ASA_CODE_DIR = os.environ.get("TEKTON_ASA_CODE_DIR", ".tekton")
 
-CATALOGS = {
-    "official": "tektoncd/catalog",
-}
-
 REPOSITORY_DIR = "/tmp/repository"
 
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/tektoncd/catalog/master/task"
+GITHUB_API_URL = "https://api.github.com"
+
+COMMENT_ALLOWED_STRING = "/tekton ok-to-test"
+
+TEKTON_CATALOG_REPOSITORY = "tektoncd/catalog"

@@ -22,8 +22,7 @@ from typing import Any, Dict, Tuple
 
 import pkg_resources
 
-GITHUB_API_URL = "https://api.github.com"
-COMMENT_ALLOWED_STRING = "/tekton ok-to-test"
+from tektonasacode import config
 
 
 class GitHUBAPIException(Exception):
@@ -39,7 +38,7 @@ class Github:
     """Github operations"""
     def __init__(self, token):
         self.token = token
-        self.github_api_url = GITHUB_API_URL
+        self.github_api_url = config.GITHUB_API_URL
 
     def request(self,
                 method: str,
@@ -118,7 +117,7 @@ class Github:
                 status=404,
             )
 
-        print(f"Task {task} in {repository} latest version is {version[0]}")
+        print(f"💡 Task {task} in {repository} latest version is {version[0]}")
 
         return version[0]
 
