@@ -15,6 +15,7 @@
 """Dropzone of stuff"""
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -161,23 +162,30 @@ class Utils:
 
     """
 
-    def kapply(self, yaml_file, jeez, parameters_extras, name=None):
+    def kapply(self, yaml_string_or_file, jeez, parameters_extras, name=None):
         """Apply kubernetes yaml template in a namespace with simple transformations
         from a dict"""
+        if os.path.exists(yaml_string_or_file):
+            yaml_string = open(yaml_string_or_file, 'r').read()
+        elif isinstance(yaml_string_or_file, str):
+            yaml_string = yaml_string_or_file
+        else:
+            return ("", "")
+
         def tpl_apply(param):
             if param in parameters_extras:
                 return parameters_extras[param]
-
             if self.get_key(param, jeez, error=False):
                 return self.get_key(param, jeez)
 
             return "{{%s}}" % (param)
 
-        if not name:
-            name = yaml_file
+        if os.path.exists(yaml_string_or_file) and not name:
+            name = yaml_string_or_file
+
         content = re.sub(
             r"\{\{([_a-zA-Z0-9\.]*)\}\}",
             lambda m: tpl_apply(m.group(1)),
-            open(yaml_file).read(),
+            yaml_string,
         )
         return (name, content)
