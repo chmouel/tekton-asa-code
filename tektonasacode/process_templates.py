@@ -34,7 +34,7 @@ class Process:
     def apply(self, processed_templates, namespace):
         """Apply templates from a dict of filename=>content"""
         for filename in processed_templates:
-            print(f"Processing {filename} in {namespace}")
+            print(f"🌊 Processing {filename} in {namespace}")
             content = processed_templates[filename]
             tmpfile = tempfile.NamedTemporaryFile(delete=False).name
             open(tmpfile, "w").write(content)
