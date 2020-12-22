@@ -194,6 +194,15 @@ class TektonAsaCode:
                                         pull_request_number)
         self.pcs.apply(processed['templates'], namespace)
 
+        if 'prerun' in processed:
+            for cmd in processed['prerun']:
+                _, cmd_processed = self.utils.kapply(cmd,
+                                                     jeez,
+                                                     parameters_extras,
+                                                     name="command")
+                message = f"⚙️  Running prerun command {cmd_processed}"
+                self.utils.execute(cmd_processed)
+
         time.sleep(2)
 
         status, describe_output, report_output = self.grab_output(namespace)

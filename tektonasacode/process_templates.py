@@ -141,6 +141,14 @@ class Process:
                         processed['templates'][
                             f"{secretname}.secret.yaml"] = yaml.safe_dump(
                                 allsecretin)
+
+        # TODO: i don't like this, i probably goign to remove it
+        # we just need this temporary because of the operator and
+        # pipelines-catalog are not in synchronize.
+        processed['prerun'] = []
+        if 'prerun' in cfg:
+            processed['prerun'] = cfg['prerun']
+
         if 'files' in cfg:
             for filepath in cfg['files']:
                 fpath = os.path.join(self.checked_repo,
