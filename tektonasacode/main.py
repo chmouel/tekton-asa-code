@@ -23,7 +23,7 @@ class TektonAsaCode:
         self.pcs = process_templates.Process(self.github)
         self.check_run_id = None
         self.repo_full_name = ""
-        self.github_json = github_json.replace("\n", " ")
+        self.github_json = github_json.replace("\n", " ").replace("\r", " ")
 
     def github_checkout_pull_request(self, repo_owner_login, repo_html_url,
                                      pull_request_number, pull_request_sha):
