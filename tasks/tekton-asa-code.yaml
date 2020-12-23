@@ -21,6 +21,14 @@ spec:
   steps:
     - name: apply-and-launch
       env:
+        - name: TKC_PIPELINERUN
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['tekton.dev/pipelineRun']
+        - name: TKC_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
         - name: PYTHONUNBUFFERED
           value: "true"
       image: quay.io/chmouel/tekton-asa-code:latest

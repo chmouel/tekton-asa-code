@@ -89,8 +89,8 @@ class TektonAsaCode:
 
         pipelinerun_output = ""
 
-        # TODO: Print only output if it's too big, because GitHUB api limit is
-        # 65535. We want to post a link to the PR in OpenShift Console instead
+        # Print only output if it's too big, because GitHUB api limit is
+        # 65535. User would use the link to the console instead
         if (len(output) + len(pipelinerun_output)) > 60000:
             output = ""
 
@@ -104,7 +104,14 @@ class TektonAsaCode:
 </details>
 
     """
+
+        console_pipelinerun_link = ""
+        if os.environ.get('TKC_NAMESPACE'):
+            console_pipelinerun_link = f"[See log on the Openshift Console ]({self.utils.get_openshift_console_url(os.environ.get('TKC_NAMESPACE'))}{os.environ.get('TKC_PIPELINERUN')}/logs/tekton-asa-code)"
+
         report = f"""{self.utils.get_errors(output)}
+        {console_pipelinerun_link}
+
 {pipelinerun_output}
 
 <details>
