@@ -110,8 +110,7 @@ class TektonAsaCode:
             console_pipelinerun_link = f"[See log on the Openshift Console ]({self.utils.get_openshift_console_url(os.environ.get('TKC_NAMESPACE'))}{os.environ.get('TKC_PIPELINERUN')}/logs/tekton-asa-code)"
 
         report = f"""{self.utils.get_errors(output)}
-        {console_pipelinerun_link}
-
+{console_pipelinerun_link}
 {pipelinerun_output}
 
 <details>
