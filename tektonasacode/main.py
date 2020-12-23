@@ -200,7 +200,7 @@ class TektonAsaCode:
                                                      jeez,
                                                      parameters_extras,
                                                      name="command")
-                message = f"⚙️  Running prerun command {cmd_processed}"
+                print(f"⚙️  Running prerun command {cmd_processed}")
                 self.utils.execute(cmd_processed)
 
         time.sleep(2)
