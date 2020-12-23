@@ -201,7 +201,9 @@ class TektonAsaCode:
                                                      parameters_extras,
                                                      name="command")
                 print(f"⚙️  Running prerun command {cmd_processed}")
-                self.utils.execute(cmd_processed)
+                self.utils.execute(
+                    cmd_processed,
+                    check_error=f"Cannot run command '{cmd_processed}'")
 
         time.sleep(2)
 
