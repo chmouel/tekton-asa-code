@@ -88,6 +88,12 @@ class TektonAsaCode:
         status = regexp.findall(describe_output)[0].split(" ")[-1]
 
         pipelinerun_output = ""
+
+        # TODO: Print only output if it's too big, because GitHUB api limit is
+        # 65535. We want to post a link to the PR in OpenShift Console instead
+        if (len(output) + len(pipelinerun_output)) > 60000:
+            output = ""
+
         if output:
             pipelinerun_output = f"""<details>
 <summary>PipelineRun Output</summary>
@@ -209,6 +215,7 @@ class TektonAsaCode:
 
         status, describe_output, report_output = self.grab_output(namespace)
         print(describe_output)
+
         # Set status as pending
         self.github.set_status(
             self.repo_full_name,
