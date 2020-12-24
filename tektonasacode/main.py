@@ -107,7 +107,7 @@ class TektonAsaCode:
 
         console_pipelinerun_link = ""
         if os.environ.get('TKC_NAMESPACE'):
-            console_pipelinerun_link = f"[See log on the Openshift Console ]({self.utils.get_openshift_console_url(os.environ.get('TKC_NAMESPACE'))}{os.environ.get('TKC_PIPELINERUN')}/logs/tekton-asa-code)"
+            console_pipelinerun_link = f"[See the full log on the Openshift Console]({self.utils.get_openshift_console_url(os.environ.get('TKC_NAMESPACE'))}{os.environ.get('TKC_PIPELINERUN')}/logs/tekton-asa-code)"
 
         report = f"""{self.utils.get_errors(output)}
 {console_pipelinerun_link}
