@@ -24,6 +24,7 @@ class TektonAsaCode:
         self.check_run_id = None
         self.repo_full_name = ""
         self.github_json = github_json.replace("\n", " ").replace("\r", " ")
+        self.console_pipelinerun_link = f"{self.utils.get_openshift_console_url(os.environ.get('TKC_NAMESPACE'))}{os.environ.get('TKC_PIPELINERUN')}/logs/tekton-asa-code)"
 
     def github_checkout_pull_request(self, repo_owner_login, repo_html_url,
                                      pull_request_number, pull_request_sha):
@@ -81,55 +82,41 @@ class TektonAsaCode:
         output = open(output_file).read()
 
         # TODO: Need a better way!
-        describe_output = self.utils.execute(
+        tkn_describe_output = self.utils.execute(
             f"tkn pr describe -n {namespace} --last").stdout.decode()
         regexp = re.compile(r"^STARTED\s*DURATION\s*STATUS\n(.*)$",
                             re.MULTILINE)
-        status = regexp.findall(describe_output)[0].split(" ")[-1]
+        status = regexp.findall(tkn_describe_output)[0].split(" ")[-1]
 
-        pipelinerun_output = ""
-
-        # Print only output if it's too big, because GitHUB api limit is
-        # 65535. User would use the link to the console instead
-        if (len(output) + len(pipelinerun_output)) > 60000:
-            output = ""
-
-        if output:
-            pipelinerun_output = f"""<details>
-<summary>PipelineRun Output</summary>
-
-<pre>
- {output}
-</pre>
-</details>
-
-    """
+        pipelinerun_jeez = self.utils.kubectl_get("pipelinerun",
+                                                  output_type="json",
+                                                  namespace=namespace)
+        pipelinerun_status = "\n".join(
+            self.utils.process_pipelineresult(pipelinerun_jeez['items'][0]))
 
         console_pipelinerun_link = ""
         if os.environ.get('TKC_NAMESPACE'):
-            console_pipelinerun_link = f"[See log on the Openshift Console ]({self.utils.get_openshift_console_url(os.environ.get('TKC_NAMESPACE'))}{os.environ.get('TKC_PIPELINERUN')}/logs/tekton-asa-code)"
+            console_pipelinerun_link = f"[See the full log on the Openshift Console]({self.utils.get_openshift_console_url(os.environ.get('TKC_NAMESPACE'))}{os.environ.get('TKC_PIPELINERUN')}/logs/tekton-asa-code)"
 
         report = f"""{self.utils.get_errors(output)}
 {console_pipelinerun_link}
-{pipelinerun_output}
+
+{pipelinerun_status}
 
 <details>
- <summary>PipelineRun status</summary>
- <pre>
-{describe_output}
- </pre>
+ <summary>More detailled status</summary>
+ <pre>{tkn_describe_output}</pre>
 </details>
 
     """
-
-        status_emoji = "☠️" if "failed" in status.lower() else "👍🏼"
+        status_emoji = "❌" if "failed" in status.lower() else "✅"
         report_output = {
             "title": "CI Run: Report",
-            "summary": f"CI has **{status}** {status_emoji}",
+            "summary": f"{status_emoji} CI has **{status}**",
             "text": report
         }
 
-        return status, describe_output, report_output
+        return status, tkn_describe_output, report_output
 
     def main(self):
         """main function"""
@@ -222,13 +209,14 @@ class TektonAsaCode:
         status, describe_output, report_output = self.grab_output(namespace)
         print(describe_output)
 
-        # Set status as pending
+        # Set final status
         self.github.set_status(
             self.repo_full_name,
             check_run["id"],
             # Only set target_url which goest to the namespace in case of failure,
             # since we delete the namespace in case of success.
-            ("failed" in status.lower() and target_url or ""),
+            ("failed" in status.lower() and target_url
+             or self.console_pipelinerun_link),
             ("failed" in status.lower() and "failure" or "success"),
             report_output,
             status="completed")
@@ -253,7 +241,7 @@ class TektonAsaCode:
                 self.github.set_status(
                     repository_full_name=self.repo_full_name,
                     check_run_id=self.check_run_id,
-                    target_url="https://tenor.com/search/sad-cat-gifs",
+                    target_url=self.console_pipelinerun_link,
                     conclusion="failure",
                     output={
                         "title": "CI Run: Failure",

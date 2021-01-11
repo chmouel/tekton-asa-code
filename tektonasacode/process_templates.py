@@ -100,7 +100,7 @@ class Process:
 
         if 'tasks' in cfg:
             for task in cfg['tasks']:
-                if 'http' in task:
+                if 'http://' in task or 'https://' in task:
                     url = task
                 else:
                     if ':' in task and not task.endswith(":latest"):
