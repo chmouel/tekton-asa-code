@@ -13,6 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 """Dropzone of stuff"""
+import datetime
 import io
 import json
 import os
@@ -54,10 +55,34 @@ class Utils:
                 raise exception
         return result
 
+    @staticmethod
+    def process_pipelineresult(jeez):
+        """Take a pipelinerun and output nicely which task fails from that
+        pieplinerun"""
+        ret = []
+        pname = jeez['metadata']['name']
+        for task in jeez['status']['taskRuns']:
+            result = jeez['status']['taskRuns'][task]['status']
+            elapsed = str(
+                datetime.datetime.strptime(result['completionTime'],
+                                           '%Y-%m-%dT%H:%M:%SZ') -
+                datetime.datetime.strptime(result['startTime'],
+                                           '%Y-%m-%dT%H:%M:%SZ'))
+            emoji = "✅"
+            for condition in result['conditions']:
+                if condition['status'] != 'True':
+                    emoji = "❌"
+
+            bname = task.replace(pname + '-', '')
+            bname = bname.replace("-" + bname.split("-")[-1], '')
+            ret.append(f"{emoji} {elapsed} {bname}")
+        return ret
+
     def kubectl_get(self,
                     obj: str,
                     output_type: str = "yaml",
                     raw: bool = False,
+                    namespace: str = "",
                     labels: Optional[dict] = None) -> Dict:
         """Get an object"""
         output_str = ''
@@ -68,8 +93,9 @@ class Utils:
                 [f"-l {label}={labels[label]}" for label in labels])
         if output_type:
             output_str = f"-o {output_type}"
+        namespace_str = f"-n {namespace}" if namespace else ""
         _out = self.execute(
-            f"kubectl get {obj} {output_str} {label_str}",
+            f"kubectl get {namespace_str} {obj} {output_str} {label_str}",
             check_error=f"Cannot run kubectl get {obj} {output_str} {label_str}"
         )
         if _out.returncode != 0:
