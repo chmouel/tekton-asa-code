@@ -24,7 +24,7 @@ class TektonAsaCode:
         self.check_run_id = None
         self.repo_full_name = ""
         self.github_json = github_json.replace("\n", " ").replace("\r", " ")
-        self.console_pipelinerun_link = f"{self.utils.get_openshift_console_url(os.environ.get('TKC_NAMESPACE'))}{os.environ.get('TKC_PIPELINERUN')}/logs/tekton-asa-code)"
+        self.console_pipelinerun_link = f"{self.utils.get_openshift_console_url(os.environ.get('TKC_NAMESPACE'))}{os.environ.get('TKC_PIPELINERUN')}/logs/tekton-asa-code"
 
     def github_checkout_pull_request(self, repo_owner_login, repo_html_url,
                                      pull_request_number, pull_request_sha):
@@ -94,13 +94,7 @@ class TektonAsaCode:
         pipelinerun_status = "\n".join(
             self.utils.process_pipelineresult(pipelinerun_jeez['items'][0]))
 
-        console_pipelinerun_link = ""
-        if os.environ.get('TKC_NAMESPACE'):
-            console_pipelinerun_link = f"[See the full log on the Openshift Console]({self.utils.get_openshift_console_url(os.environ.get('TKC_NAMESPACE'))}{os.environ.get('TKC_PIPELINERUN')}/logs/tekton-asa-code)"
-
         report = f"""{self.utils.get_errors(output)}
-{console_pipelinerun_link}
-
 {pipelinerun_status}
 
 <details>
