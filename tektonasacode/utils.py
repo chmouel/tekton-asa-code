@@ -61,6 +61,11 @@ class Utils:
         pieplinerun"""
         ret = []
         pname = jeez['metadata']['name']
+        if 'taskRuns' not in 'status':
+            return [
+                f"• <i>{cond['message']}</i>"
+                for cond in jeez['status']['conditions']
+            ]
         for task in jeez['status']['taskRuns']:
             result = jeez['status']['taskRuns'][task]['status']
             elapsed = str(
