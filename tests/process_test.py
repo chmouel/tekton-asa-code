@@ -227,6 +227,7 @@ def test_process_yaml_ini(tmp_path, fixtrepo):
                         obj: str,
                         output_type: str = "yaml",
                         raw: bool = False,
+                        namespace: str = "",
                         labels: Optional[dict] = None):  # pylint: disable=unused-argument,missing-function-docstring,no-self-use
             return {"items": [{"metadata": {"name": "shuss"}}]}
 
