@@ -137,6 +137,8 @@ class TektonAsaCode:
             "repo_url": repo_html_url,
             "repo_owner": repo_owner_login,
             "namespace": namespace,
+            "openshift_console_pipelinerun_href":
+            self.console_pipelinerun_link,
         }
 
         target_url = self.utils.get_openshift_console_url(namespace)
