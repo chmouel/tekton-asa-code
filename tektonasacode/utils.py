@@ -61,7 +61,7 @@ class Utils:
         pieplinerun"""
         ret = []
         pname = jeez['metadata']['name']
-        if 'taskRuns' not in 'status':
+        if 'taskRuns' not in jeez['status']:
             return [
                 f"• <i>{cond['message']}</i>"
                 for cond in jeez['status']['conditions']
