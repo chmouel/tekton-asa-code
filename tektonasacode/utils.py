@@ -182,15 +182,15 @@ class Utils:
         ret = ""
         for i in errorre.findall(text):
             i = re.sub(errorstrings, r"**\1**", i[0], flags=re.IGNORECASE)
-            ret += f" * <code>{i}</code>\n"
+            ret += f" * *{i}*\n"
 
         if not ret:
             return ""
         return f"""
-    Errors detected :
-
-    {ret}
-
+    <details>
+        <summary>Errors detected</summary>
+        <pre>{ret}</pre>
+    </details>
     """
 
     def kapply(self, yaml_string_or_file, jeez, parameters_extras, name=None):

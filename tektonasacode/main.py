@@ -94,8 +94,9 @@ class TektonAsaCode:
         pipelinerun_status = "\n".join(
             self.utils.process_pipelineresult(pipelinerun_jeez['items'][0]))
 
-        report = f"""{self.utils.get_errors(output)}
-{pipelinerun_status}
+        report = f"""{pipelinerun_status}
+
+{self.utils.get_errors(output)}
 
 <details>
  <summary>More detailled status</summary>
