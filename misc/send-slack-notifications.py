@@ -116,8 +116,12 @@ def main() -> int:
         required=True,
         help="GitHUB json for pull request, pull_request.labels=[]")
 
+    parser.add_argument("--pipelinerun",
+                        default=os.environ.get("PIPELINERUN"),
+                        help="The pipelinerun to check the status on")
+
     parser.add_argument("--slack-webhook-url",
-                        required=True,
+                        default=os.environ.get("SLACK_WEBHOOK_URL"),
                         help="Slack webhook URL")
 
     args = parser.parse_args()
@@ -128,13 +132,19 @@ def main() -> int:
             )
             return 0
 
-    if 'PIPELINERUN' not in os.environ:
+    if not args.pipelinerun:
         print(
-            "The environement variable PIPELINERUN is not defined, i cannot check if it fails or not."
+            "error --pipelinerun need to be set via env env variable or other means."
         )
         return 1
 
-    failures = check_status_of_pipelinerun(os.environ['PIPELINERUN'])
+    if not args.slack_webhook_url:
+        print(
+            "error --slack-webhook-url need to be set via env variable or other means."
+        )
+        return 1
+
+    failures = check_status_of_pipelinerun(args.pipelinerun)
     if failures:
         slack_icon = args.failure_url_icon
         slack_subject = args.failure_subject
