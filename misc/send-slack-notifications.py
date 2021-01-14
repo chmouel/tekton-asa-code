@@ -28,11 +28,10 @@ class SlackNotificationError(Exception):
     pass
 
 
-def check_label(label_json: str, label_to_check: str) -> bool:
+def check_label(label_eval: str, label_to_check: str) -> bool:
     """Check a label: if you get a string that has all the labels as specified
     by github, it will eval it and check if one contains the label_to_check"""
-    return bool(
-        [x for x in json.loads(label_json) if x['name'] == label_to_check])
+    return bool([x for x in eval(label_eval) if x['name'] == label_to_check])  # pylint: disable=eval-used
 
 
 def check_status_of_pipelinerun(pipelinerun: str) -> typing.List[str]:
@@ -112,29 +111,39 @@ def main() -> int:
     parser.add_argument("--log-url", help="Link to the log url")
 
     parser.add_argument(
-        "--github-pull-label-json",
+        "--github-pull-label",
         required=True,
-        help="GitHUB json for pull request, pull_request.labels=[]")
+        help="pull_request.labels dict as get from tekton asa code")
+
+    parser.add_argument("--pipelinerun",
+                        default=os.environ.get("PIPELINERUN"),
+                        help="The pipelinerun to check the status on")
 
     parser.add_argument("--slack-webhook-url",
-                        required=True,
+                        default=os.environ.get("SLACK_WEBHOOK_URL"),
                         help="Slack webhook URL")
 
     args = parser.parse_args()
-    if args.label_to_check and args.github_pull_label_json:
-        if not check_label(args.github_pull_label_json, args.label_to_check):
+    if args.label_to_check and args.github_pull_label:
+        if not check_label(args.github_pull_label, args.label_to_check):
             print(
                 f"Pull request doesn't have the label {args.label_to_check} skipping."
             )
             return 0
 
-    if 'PIPELINERUN' not in os.environ:
+    if not args.pipelinerun:
         print(
-            "The environement variable PIPELINERUN is not defined, i cannot check if it fails or not."
+            "error --pipelinerun need to be set via env env variable or other means."
         )
         return 1
 
-    failures = check_status_of_pipelinerun(os.environ['PIPELINERUN'])
+    if not args.slack_webhook_url:
+        print(
+            "error --slack-webhook-url need to be set via env variable or other means."
+        )
+        return 1
+
+    failures = check_status_of_pipelinerun(args.pipelinerun)
     if failures:
         slack_icon = args.failure_url_icon
         slack_subject = args.failure_subject
