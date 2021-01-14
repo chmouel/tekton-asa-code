@@ -272,7 +272,7 @@ A demo here :
 
 [![Tekton aac status](https://asciinema.org/a/UtYEMplIgE4QaIkTGWV6oYLhg.svg)](https://asciinema.org/a/UtYEMplIgE4QaIkTGWV6oYLhg)
 
-## SLACK notificaitons
+## Slack notificaitons
 
 You can easily add a slack notifcation to notify if your pipeline has failed or
 run sucessfully. There is a script in
@@ -301,7 +301,7 @@ At the end of your pipeline add this block :
                     fieldPath: metadata.labels['tekton.dev/pipelineRun']
             image: quay.io/chmouel/tekton-asa-code:latest
             script: |
-              python3 misc/send-slack-notifications.py --github-pull-label="{{pull_request.labels}}" --label-to-check=nightly-ci \
+              python3 /code/misc/send-slack-notifications.py --github-pull-label="{{pull_request.labels}}" --label-to-check=nightly-ci \
               --failure-subject="Pipelines has failed on {{pull_request.html_url}} :fb-sad: :crying_cat_face: :crying:" \
               --failure-url-icon="https://www.vhv.rs/dpng/d/415-4154815_grumpy-cat-png-photos-grumpy-cat-png-transparent.png" \
               --success-subject="Pipelines ran succesfully on {{pull_request.html_url}} :pipelinedance: :dancing-penguin: :yay2:" \
