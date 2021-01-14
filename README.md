@@ -272,6 +272,51 @@ A demo here :
 
 [![Tekton aac status](https://asciinema.org/a/UtYEMplIgE4QaIkTGWV6oYLhg.svg)](https://asciinema.org/a/UtYEMplIgE4QaIkTGWV6oYLhg)
 
+## SLACK notificaitons
+
+You can easily add a slack notifcation to notify if your pipeline has failed or
+run sucessfully. There is a script in
+[misc/send-slack-notifications.py](misc/send-slack-notifications.py) that can
+help you with that with the help of the [finally
+tasks](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md#adding-finally-to-the-pipeline)
+in your pipeline.
+
+At the end of your pipeline add this block :
+
+```yaml
+  finally:
+    - name: finally
+      taskSpec:
+        steps:
+          - name: send-to-slack
+            env:
+              - name: SLACK_WEBHOOK_URL
+                valueFrom:
+                  secretKeyRef:
+                    name: chmouel-scratchpad-slack-webhook
+                    key: hook_url
+              - name: PIPELINERUN
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.labels['tekton.dev/pipelineRun']
+            image: quay.io/chmouel/tekton-asa-code:latest
+            script: |
+              python3 misc/send-slack-notifications.py --github-pull-label="{{pull_request.labels}}" --label-to-check=nightly-ci \
+              --failure-subject="Pipelines has failed on {{pull_request.html_url}} :fb-sad: :crying_cat_face: :crying:" \
+              --failure-url-icon="https://www.vhv.rs/dpng/d/415-4154815_grumpy-cat-png-photos-grumpy-cat-png-transparent.png" \
+              --success-subject="Pipelines ran succesfully on {{pull_request.html_url}} :pipelinedance: :dancing-penguin: :yay2:" \
+              --success-url-icon="https://github.com/tektoncd.png" \
+              --log-url="{{openshift_console_pipelinerun_href}}"
+```
+
+The `SLACK_WEBHOOK_URL` secret is a secret you have configured in your
+`tekton.yaml` as documented earlier. It would have the webhook url where to send
+your notifications. (never commit your webhook url to a public repo).
+
+You can have a label to check where you can say only run the notifications when
+this label is on the PR. The argument between the "{{ }}" are coming directly
+from tekton-asa-code so usually you want to leave them be here.
+
 ## Examples
 
 Tekton as a code test itself, you can get the example of the pipeline it test
