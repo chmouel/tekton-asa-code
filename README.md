@@ -301,6 +301,8 @@ At the end of your pipeline add this block :
                     fieldPath: metadata.labels['tekton.dev/pipelineRun']
             image: quay.io/chmouel/tekton-asa-code:latest
             script: |
+              #!/usr/bin/env bash
+              set -e
               python3 /code/misc/send-slack-notifications.py --github-pull-label="{{pull_request.labels}}" --label-to-check=nightly-ci \
               --failure-subject="Pipelines has failed on {{pull_request.html_url}} :fb-sad: :crying_cat_face: :crying:" \
               --failure-url-icon="https://www.vhv.rs/dpng/d/415-4154815_grumpy-cat-png-photos-grumpy-cat-png-transparent.png" \
