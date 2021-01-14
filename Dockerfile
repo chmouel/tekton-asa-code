@@ -1,7 +1,8 @@
 FROM registry.access.redhat.com/ubi8/ubi:8.2
 ARG TKN_VERSION=0.15.0
 
-COPY . .
+COPY . /code
+WORKDIR /code
 
 RUN  curl -sL -o- https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz | \
     tar xvzf - -C /usr/local/bin oc kubectl  && \
@@ -16,5 +17,5 @@ RUN INSTALL_PKGS="git python38" && \
     rpm -V $INSTALL_PKGS && \
     yum -y clean all --enablerepo='*'
 
-Run pip3 install -r requirements.txt -e.
+RUN pip3 install -r requirements.txt -e.
 ENTRYPOINT ["tekton-asa-code"]
