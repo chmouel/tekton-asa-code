@@ -95,24 +95,37 @@ def main() -> int:
     parser.add_argument("--label-to-check", help="Label to check")
     parser.add_argument(
         "--failure-url-icon",
-        default="https://publicdomainvectors.org/photos/21826-REMIX-ARRET.png",
+        default=os.environ.get(
+            "FAILURE_URL_ICON",
+            "https://publicdomainvectors.org/photos/21826-REMIX-ARRET.png"),
         help="The icon of failure")
+
     parser.add_argument(
         "--success-url-icon",
-        default="https://publicdomainvectors.org/photos/Checkmark.png",
+        default=os.environ.get(
+            "SUCCESS_URL_ICON",
+            "https://publicdomainvectors.org/photos/Checkmark.png"),
         help="The icon of success")
 
     parser.add_argument("--failure-subject",
                         help="The subject of the slack message when failure",
-                        default="CI has failed :cry:")
-    parser.add_argument("--success-subject",
-                        help="The subject of the slack message when succes",
-                        default="CI has succeeded :thumbsup:")
-    parser.add_argument("--log-url", help="Link to the log url")
+                        default=os.environ.get("FAILURE_SUBJECT",
+                                               "CI has failed :cry:"))
+
+    parser.add_argument(
+        "--success-subject",
+        default=os.environ.get("SUCCESS_SUBJECT",
+                               "CI has succeeded :thumbsup:"),
+        help="The subject of the slack message when succes",
+    )
+
+    parser.add_argument("--log-url",
+                        default=os.environ.get("LOG_URL"),
+                        help="Link to the log url")
 
     parser.add_argument(
         "--github-pull-label",
-        required=True,
+        default=os.environ.get("GITHUB_PULL_LABEL"),
         help="pull_request.labels dict as get from tekton asa code")
 
     parser.add_argument("--pipelinerun",
