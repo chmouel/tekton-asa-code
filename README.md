@@ -299,16 +299,22 @@ At the end of your pipeline add this block :
                 valueFrom:
                   fieldRef:
                     fieldPath: metadata.labels['tekton.dev/pipelineRun']
+              - name: GITHUB_PULL_LABEL
+                value: "{{pull_request.labels}}"
+              - name: LABEL_TO_CHECK
+                value: "slacked"
+              - name: SUCCESS_URL_ICON
+                value: "https://github.com/tektoncd.png"
+              - name: FAILURE_URL_ICON
+                value: "https://www.vhv.rs/dpng/d/415-4154815_grumpy-cat-png-photos-grumpy-cat-png-transparent.png"
+              - name: SUCCESS_SUBJECT
+                value: "That's wonderful the pipeline foo has run successfully. :joy:"
+              - name: FAILURE_SUBJECT
+                value: "There was some failures while running pipeline :crying:"
+              - name: LOG_URL
+                value: "{{openshift_console_pipelinerun_href}}"
             image: quay.io/chmouel/tekton-asa-code:latest
-            script: |
-              #!/usr/bin/env bash
-              set -e
-              python3 /code/misc/send-slack-notifications.py --github-pull-label="{{pull_request.labels}}" --label-to-check=nightly-ci \
-              --failure-subject="Pipelines has failed on {{pull_request.html_url}} :fb-sad: :crying_cat_face: :crying:" \
-              --failure-url-icon="https://www.vhv.rs/dpng/d/415-4154815_grumpy-cat-png-photos-grumpy-cat-png-transparent.png" \
-              --success-subject="Pipelines ran succesfully on {{pull_request.html_url}} :pipelinedance: :dancing-penguin: :yay2:" \
-              --success-url-icon="https://github.com/tektoncd.png" \
-              --log-url="{{openshift_console_pipelinerun_href}}"
+            command: ["/code/misc/send-slack-notifications.py"]
 ```
 
 The `SLACK_WEBHOOK_URL` secret is a secret you have configured in your
