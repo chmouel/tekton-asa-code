@@ -17,6 +17,7 @@ from tektonasacode import config, github, process_templates, utils
 
 class TektonAsaCode:
     """Tekton as a Code main class"""
+
     def __init__(self, github_token, github_json):
         self.utils = utils.Utils()
         self.github = github.Github(github_token)
@@ -115,9 +116,8 @@ class TektonAsaCode:
 
     def main(self):
         """main function"""
-        jeez = json.loads(self.github_json)
+        jeez = self.github.filter_event_json(json.loads(self.github_json))
         self.repo_full_name = self.utils.get_key("repository.full_name", jeez)
-
         random_str = "".join(
             random.choices(string.ascii_letters + string.digits, k=2)).lower()
         pull_request_sha = self.utils.get_key("pull_request.head.sha", jeez)
@@ -230,6 +230,8 @@ class TektonAsaCode:
         """Wrap main() and catch errors to report if we can"""
         try:
             self.main()
+        except github.GithubEventNotProcessed:
+            return
         except Exception as err:
             exc_type, exc_value, exc_tb = sys.exc_info()
             tracebackerr = traceback.format_exception(exc_type, exc_value,

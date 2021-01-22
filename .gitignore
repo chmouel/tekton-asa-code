@@ -1,3 +1,4 @@
+.eggs/
 tmp/*
 **/__pycache__
 **/*.pyc

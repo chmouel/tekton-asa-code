@@ -25,6 +25,10 @@ import pkg_resources
 from tektonasacode import config
 
 
+class GithubEventNotProcessed(Exception):
+    """Raised when the event is not processed."""
+
+
 class GitHUBAPIException(Exception):
     """Exceptions when GtiHUB API fails"""
     status = None
@@ -36,6 +40,7 @@ class GitHUBAPIException(Exception):
 
 class Github:
     """Github operations"""
+
     def __init__(self, token):
         self.token = token
         self.github_api_url = config.GITHUB_API_URL
@@ -80,6 +85,30 @@ class Github:
 
         return (response, json.loads(response.read().decode()))
 
+    def filter_event_json(self, event_json):
+        """Filter the json received if it's a comment add the pull request
+        information into it. If there is nothing then return an execption
+        NotProcessed"""
+        if "pull_request" in event_json:
+            return event_json
+        # Check if the event has a /retest in a pull_request comment, it can be
+        # any line.
+        if all([
+                "issue" in event_json, "pull_request" in event_json["issue"],
+                "comment" in event_json, config.COMMENT_RETEST_STRING
+                in event_json["comment"]["body"].split("\n")
+        ]):
+            response, pull_request = self.request(
+                "GET", event_json["issue"]["pull_request"]["url"])
+            if response.status >= 400:
+                raise GithubEventNotProcessed(
+                    f'Error loading {event_json["issue"]["pull_request"]["url"]}'
+                )
+            event_json["pull_request"] = pull_request
+            return event_json
+
+        raise GithubEventNotProcessed("Not processing this GitHUB event")
+
     def get_file_content(self, owner_repo: str, path: str) -> bytes:
         """Get file path contents from GITHUB API"""
         try:
@@ -112,8 +141,7 @@ class Github:
 
         if not version[1]:
             raise GitHUBAPIException(
-                message=
-                f"I could not find a task in '{repository}' for '{task}' ",
+                message=f"I could not find a task in '{repository}' for '{task}' ",
                 status=404,
             )
 

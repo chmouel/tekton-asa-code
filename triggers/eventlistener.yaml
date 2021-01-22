@@ -11,8 +11,9 @@ spec:
         - github:
             eventTypes:
               - pull_request
+              - issue_comment
         - cel:
-            filter: "body.action in ['opened', 'synchronize'] && 'installation' in body"
+            filter: "body.action in ['created', 'opened', 'synchronize'] && 'installation' in body"
       bindings:
         - ref: tekton-asa-code-bindings
       template:

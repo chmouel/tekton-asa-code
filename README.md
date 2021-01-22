@@ -231,20 +231,9 @@ https://github.com/apps/my-app-tekton-asa-code and installs it for her code
 repository. Tekton as a code should run right after creating a new PR.
 
 If the user submits a PR and tekton as a code has been restricted to only runs
-PR from a user from an organization which the user is not part of. A user of the
-organization can add the line `/tekton ok-to-test` in a comment of the PR and
-this will allows it. You can add other lines after or before, you just need one
-exact line matching the `/tekton ok-to-test` directive, i.e:
+PR from a user from an organization which the user is not part of. 
 
-```
-/tekton ok-to-test
-
-Thanks for submitting 👍🏼
-```
-
-**TODO**: Tekton as a code doesn't currently listen to comment events from
-github so after running the `/tekton ok-to-test`, the user needs to submit a new
-iteration of the PR to *rekick* the PR check.
+If the user send the comment `/retest` on PR it will retest the PR.
 
 ### Troubleshooting
 

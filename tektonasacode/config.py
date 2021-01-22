@@ -22,6 +22,7 @@ REPOSITORY_DIR = "/tmp/repository"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/tektoncd/catalog/master/task"
 GITHUB_API_URL = "https://api.github.com"
 
-COMMENT_ALLOWED_STRING = "/tekton ok-to-test"
+COMMENT_ALLOWED_STRING = "/ok-to-test"
+COMMENT_RETEST_STRING = "/retest"
 
 TEKTON_CATALOG_REPOSITORY = "tektoncd/catalog"
