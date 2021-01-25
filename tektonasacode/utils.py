@@ -68,11 +68,13 @@ class Utils:
             ]
         for task in jeez['status']['taskRuns']:
             result = jeez['status']['taskRuns'][task]['status']
-            elapsed = str(
-                datetime.datetime.strptime(result['completionTime'],
-                                           '%Y-%m-%dT%H:%M:%SZ') -
-                datetime.datetime.strptime(result['startTime'],
-                                           '%Y-%m-%dT%H:%M:%SZ'))
+            elapsed = "N/A"
+            if 'completionTime' in result and 'startTime' in result:
+                elapsed = str(
+                    datetime.datetime.strptime(result['completionTime'],
+                                               '%Y-%m-%dT%H:%M:%SZ') -
+                    datetime.datetime.strptime(result['startTime'],
+                                               '%Y-%m-%dT%H:%M:%SZ'))
             emoji = "✅"
             for condition in result['conditions']:
                 if condition['status'] != 'True':
