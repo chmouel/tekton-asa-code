@@ -217,14 +217,16 @@ class TektonAsaCode:
             ("failed" in status.lower() and "failure" or "success"),
             report_output,
             status="completed")
-        if "failed" in status.lower():
-            sys.exit(1)
 
-        # Only delete if it succeed, keeping it for investigation
+        # Always delete the namespace after, since this consumes too much
+        # resources to be kept. Maybe do this as variable?
         self.utils.execute(
             f"kubectl delete ns {namespace}",
             "Cannot delete temporary namespace {namespace}",
         )
+
+        if "failed" in status.lower():
+            sys.exit(1)
 
     def runwrap(self):
         """Wrap main() and catch errors to report if we can"""
