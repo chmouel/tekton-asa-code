@@ -25,7 +25,19 @@ import urllib.request
 
 class SlackNotificationError(Exception):
     """Custom exception when we fail"""
-    pass
+
+
+def get_openshift_console_url(namespace: str) -> str:
+    """Get the openshift console url for a namespace"""
+    cmd = (
+        "kubectl get route -n openshift-console console -o jsonpath='{.spec.host}'",
+    )
+    ret = subprocess.run(cmd, shell=True, check=True, capture_output=True)
+    if ret.returncode != 0:
+        raise SlackNotificationError(
+            "Could not detect the location of openshift console url: {ret.stdout.decode()}"
+        )
+    return f"https://{ret.stdout.decode()}/k8s/ns/{namespace}/tekton.dev~v1beta1~PipelineRun/"
 
 
 def check_label(label_eval: str, label_to_check: str) -> bool:
@@ -34,14 +46,20 @@ def check_label(label_eval: str, label_to_check: str) -> bool:
     return bool([x for x in eval(label_eval) if x['name'] == label_to_check])  # pylint: disable=eval-used
 
 
-def check_status_of_pipelinerun(pipelinerun: str) -> typing.List[str]:
-    """Check status of a pipelinerun using kubectl, we avoid the the Running
-    ones since we run in finally, it will have a running ones"""
+def get_json_of_pipelinerun(pipelinerun: str) -> typing.Dict[str, typing.Dict]:
+    """Find which namespace where we are running currently by checking the
+    pipelinerun namespace"""
     cmd = f"kubectl get pipelinerun {pipelinerun} -o json"
     ret = subprocess.run(cmd, shell=True, check=True, capture_output=True)
     if ret.returncode != 0:
         raise SlackNotificationError(f"Could not run command: {cmd}")
-    jeez = json.loads(ret.stdout)
+    return json.loads(ret.stdout)
+
+
+def check_status_of_pipelinerun(
+        jeez: typing.Dict[str, typing.Dict]) -> typing.List[str]:
+    """Check status of a pipelinerun using kubectl, we avoid the the Running
+    ones since we run in finally, it will have a running ones"""
     task_runs = jeez['status']['taskRuns']
     failed = []
 
@@ -156,7 +174,8 @@ def main() -> int:
         )
         return 1
 
-    failures = check_status_of_pipelinerun(args.pipelinerun)
+    jeez = get_json_of_pipelinerun(args.pipelinerun)
+    failures = check_status_of_pipelinerun(jeez)
     if failures:
         slack_icon = args.failure_url_icon
         slack_subject = args.failure_subject
@@ -165,6 +184,11 @@ def main() -> int:
         slack_icon = args.success_url_icon
         slack_subject = args.success_subject
         slack_text = "\n"
+
+    if args.log_url and args.log_url == "openshift":
+        # TODO: Add tekton dashboard if we can find this automatically
+        args.log_url = get_openshift_console_url(jeez['metadata']['namespace']) + \
+            args.pipelinerun + "/logs"
 
     if args.log_url:
         slack_text += f"• *PipelineRun logs*: {args.log_url}"
