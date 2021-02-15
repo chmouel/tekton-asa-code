@@ -314,7 +314,7 @@ You can have a label to check where you can say only run the notifications when
 this label is on the PR. The argument between the "{{ }}" are coming directly
 from tekton-asa-code so usually you want to leave them be here.
 
-If you want to use this with tekton-asa-code, you just need to have those "{{ }}" replaced with trigger 
+If you want to use this without tekton-asa-code, you just need to have those `"{{ }}"` replaced with trigger 
 binding from tekton-triggers from a github event.
 
 ## Examples
