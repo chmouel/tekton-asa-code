@@ -122,13 +122,25 @@ class Github:
 
     def get_task_latest_version(self, repository: str, task: str) -> str:
         """Use the github api to retrieve the latest task verison from a repository"""
-        _, catalog = self.request(
-            "GET",
-            f"{self.github_api_url}/repos/{repository}/git/trees/master",
-            params={
-                "recursive": "true",
-            },
-        )
+        error = None
+        catalog = None
+        for tip_branch in ('main', 'master'):
+            try:
+                _, catalog = self.request(
+                    "GET",
+                    f"{self.github_api_url}/repos/{repository}/git/trees/{tip_branch}",
+                    params={
+                        "recursive": "true",
+                    },
+                )
+                if catalog:
+                    break
+            except Exception as exc:
+                error = exc
+
+        if error:
+            raise error
+
         version = ("0.0", None)
         for tree in catalog["tree"]:
             path = tree["path"]
