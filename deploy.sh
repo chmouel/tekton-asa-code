@@ -27,7 +27,7 @@ fi
 
 set -e
 
-EXTERNAL_TASKS="https://raw.githubusercontent.com/tektoncd/catalog/master/task/github-app-token/0.1/github-app-token.yaml"
+EXTERNAL_TASKS="https://raw.githubusercontent.com/tektoncd/catalog/main/task/github-app-token/0.1/github-app-token.yaml"
 
 TMPFILE=$(mktemp /tmp/.mm.XXXXXX)
 clean() { rm -f ${TMPFILE}; }

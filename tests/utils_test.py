@@ -42,12 +42,12 @@ def test_get_errors():
     tools = utils.Utils()
 
     text = """I have failed to do
-what my master would want
+what my love would want
 my error my mistake"""
     output = tools.get_errors(text)
     assert "**failed**" in output
     assert "**error**" in output
-    assert "my master" not in output
+    assert "my love" not in output
 
     assert not tools.get_errors("Happy as a cucumber")
 

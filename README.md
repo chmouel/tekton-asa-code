@@ -35,7 +35,7 @@ event listener that will launch a tekton as a code pipeline.
 
 The tekton as a code pipeline has 2 tasks:
 - the first one is to retrieve a user token with the github app private key via the [github-app-token
-task](https://github.com/tektoncd/catalog/blob/master/task/github-app-token/0.1/)
+task](https://github.com/tektoncd/catalog/blob/main/task/github-app-token/0.1/)
 to be able to do operation on the behalf of the user.
 
 - The second task that follows will launch the tekton-asa-code main task.
@@ -109,7 +109,7 @@ files:
 tasks:
     - git-clone
     - buildah:0.1
-    - https://raw.github.com/repos/org/repo/master/template.yaml
+    - https://raw.github.com/repos/org/repo/main/template.yaml
 ```
 
 It will install the git-clone task version 0.1 from https://github.com/tektoncd/catalog.
@@ -123,7 +123,7 @@ It will directly install the URL (this do not have to be a task it can be any re
 - By default all pull request are denied unless the repo owner is submitting
   them or explictely allowed.
 - tekton-asa-code will try to find a `OWNERS` file at the root of the `.tekton`
-  directory **in the main branch (i.e: master) not in the submitted PR**.
+  directory **in the main branch (i.e: main) not in the submitted PR**.
 - If the user who submitted the PR is in that file it will be allowed.
 - If there is a line starting with `@` (ie: `@google`) it will query the github
   organisation membership of the user who submitted the PR and allows it if the
@@ -267,7 +267,7 @@ You can easily add a slack notifcation to notify if your pipeline has failed or
 run sucessfully. There is a script in
 [misc/send-slack-notifications.py](misc/send-slack-notifications.py) that can
 help you with that with the help of the [finally
-tasks](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md#adding-finally-to-the-pipeline)
+tasks](https://github.com/tektoncd/pipeline/blob/main/docs/pipelines.md#adding-finally-to-the-pipeline)
 in your pipeline.
 
 At the end of your pipeline add this block :

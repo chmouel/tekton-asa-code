@@ -124,6 +124,8 @@ class Github:
         """Use the github api to retrieve the latest task verison from a repository"""
         error = None
         catalog = None
+        # TODO: Get default_branch from github api instead of mucking around with this
+        #       See https://stackoverflow.com/a/16501903
         for tip_branch in ('main', 'master'):
             try:
                 _, catalog = self.request(

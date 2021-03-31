@@ -19,7 +19,7 @@ TEKTON_ASA_CODE_DIR = os.environ.get("TEKTON_ASA_CODE_DIR", ".tekton")
 
 REPOSITORY_DIR = "/tmp/repository"
 
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/tektoncd/catalog/master/task"
+GITHUB_RAW_URL = "https://raw.githubusercontent.com/tektoncd/catalog/main/task"
 GITHUB_API_URL = "https://api.github.com"
 
 COMMENT_ALLOWED_STRING = "/ok-to-test"
