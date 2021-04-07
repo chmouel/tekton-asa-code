@@ -3,6 +3,8 @@ apiVersion: triggers.tekton.dev/v1alpha1
 kind: TriggerTemplate
 metadata:
   name: tekton-asa-code-template
+  annotations:
+    triggers.tekton.dev/old-escape-quotes: "true"
 spec:
   params:
     - name: installation_id

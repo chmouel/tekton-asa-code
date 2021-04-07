@@ -218,15 +218,15 @@ class TektonAsaCode:
             report_output,
             status="completed")
 
-        # Always delete the namespace after, since this consumes too much
-        # resources to be kept. Maybe do this as variable?
-        self.utils.execute(
-            f"kubectl delete ns {namespace}",
-            "Cannot delete temporary namespace {namespace}",
-        )
-
         if "failed" in status.lower():
             sys.exit(1)
+
+        # Delete the namespace on success ,since this consumes too much
+        # resources to be kept. Maybe do this as variable?
+        self.utils.execute(
+            f"echo kubectl delete ns {namespace}",
+            "Cannot delete temporary namespace {namespace}",
+        )
 
     def runwrap(self):
         """Wrap main() and catch errors to report if we can"""
