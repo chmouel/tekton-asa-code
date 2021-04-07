@@ -57,8 +57,13 @@ github_webhook_secret=$(${KB} get secret github-webhook-secret -o jsonpath='{.da
 if [[ -n ${github_webhook_secret} ]];then
      github_webhook_secret=$(echo ${github_webhook_secret}|base64 --decode)
 else
-    github_webhook_secret=${GITHUB_WEBHOOK_SECRET:-$(openssl rand -hex 20|tr -d '\n')}
-    echo "Password for Github Webhook secret generated is: ${github_webhook_secret}"
+	if [[ -n ${GITHUB_WEBHOOK_SECRET} ]];then
+		github_webhook_secret=${GITHUB_WEBHOOK_SECRET}
+		echo "Using Github Webhook scret provided: ${GITHUB_WEBHOOK_SECRET}"
+	else
+		github_webhook_secret=${GITHUB_WEBHOOK_SECRET:-$(openssl rand -hex 20|tr -d '\n')}
+		echo "Password for Github Webhook secret generated is: ${github_webhook_secret}"
+	fi
     ${KB} create secret  generic github-webhook-secret --from-literal token="${github_webhook_secret}"
 fi
 
@@ -93,7 +98,7 @@ function openshift_expose_service () {
 function create_secret() {
     local s=${1}
     local literal=${2}
-    ${KB} delete secret ${s}
+    ${KB} delete secret ${s} || true
     ${KB} get secret ${s} >/dev/null 2>/dev/null || \
         ${KB} create secret generic ${s} --from-literal "${literal}"
 }
