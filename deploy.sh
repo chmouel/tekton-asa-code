@@ -80,11 +80,6 @@ function k() {
     done
 }
 
-function waitfor() {
-    local thing=${1}
-    ${KB} wait --for condition=available ${thing} --timeout=30s
-}
-
 function openshift_expose_service () {
 	local s=${1}
     local n=${2}
@@ -139,7 +134,6 @@ done
 
 create_secret github-app-secret private.key="$(cat ${GITHUB_APP_PRIVATE_KEY})"
 give_cluster_admin
-waitfor eventlisteners/${SERVICE}
 
 echo "-- Installation has finished --"
 echo
