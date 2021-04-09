@@ -26,3 +26,5 @@ COMMENT_ALLOWED_STRING = "/ok-to-test"
 COMMENT_RETEST_STRING = "/retest"
 
 TEKTON_CATALOG_REPOSITORY = "tektoncd/catalog"
+
+ALLOW_PRERUNS_CMD = False
