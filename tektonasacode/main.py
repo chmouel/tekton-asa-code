@@ -190,7 +190,7 @@ class TektonAsaCode:
                                         pull_request_number)
         self.pcs.apply(processed['templates'], namespace)
 
-        if 'prerun' in processed:
+        if config.ALLOW_PRERUNS_CMD and 'prerun' in processed:
             for cmd in processed['prerun']:
                 _, cmd_processed = self.utils.kapply(cmd,
                                                      jeez,
