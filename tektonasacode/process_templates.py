@@ -25,6 +25,7 @@ from tektonasacode import config, utils
 
 class Process:
     """Main processing class"""
+
     def __init__(self, github_cls):
         self.utils = utils.Utils()
         self.github = github_cls
@@ -50,6 +51,7 @@ class Process:
         repo_owner = self.utils.get_key("repository.owner.login", jeez)
         owner_repo = self.utils.get_key("pull_request.base.repo.full_name",
                                         jeez)
+        repo_full_name = self.utils.get_key("repository.full_name", jeez)
 
         # Always allow the repo owner to submit.
         if repo_owner == pr_login:
@@ -82,6 +84,9 @@ class Process:
             else:
                 if owner == pr_login:
                     allowed = True
+
+        if pr_login in self.github.get_repo_contributors(repo_full_name):
+            allowed = True
 
         return allowed
 
