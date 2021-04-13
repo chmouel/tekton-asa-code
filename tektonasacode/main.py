@@ -169,7 +169,9 @@ class TektonAsaCode:
 
         processed = self.pcs.process_tekton_dir(jeez, parameters_extras)
         if processed['allowed']:
-            print("✅ User is allowed to run this PR")
+            print(
+                f"✅ User {self.utils.get_key('pull_request.user.login', jeez)} is allowed to run this PR"
+            )
         else:
             message = f"❌👮‍♂️ Skipping running the CI since the user **{self.utils.get_key('pull_request.user.login', jeez)}** is not in the owner file or section"
             self.github.set_status(
