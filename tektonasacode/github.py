@@ -18,7 +18,7 @@ import datetime
 import http.client
 import json
 import urllib.parse
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, List
 
 import pkg_resources
 
@@ -178,6 +178,17 @@ class Github:
         if organization in organizations:
             return True
         return False
+
+    def get_repo_contributors(
+        self,
+        repo_full_name: str,
+    ) -> List[str]:
+        """Get contributors of a repo via API"""
+        _, contributors = self.request(
+            "GET",
+            f"{self.github_api_url}/repos/{repo_full_name}/contributors",
+        )
+        return [x['login'] for x in contributors]
 
     def set_status(
         self,
