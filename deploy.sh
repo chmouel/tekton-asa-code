@@ -85,6 +85,14 @@ function openshift_expose_service () {
     local n=${2}
     ${KB} delete route  ${s} 2>/dev/null >/dev/null || true
     [[ -n ${n} ]] && n="--hostname=${n}"
+	
+	while True;do
+		${KB} get service ${s} && break || true
+		sleep 10
+		[[ ${max} == 12 ]] && { echo "cannot find ${s}"; exit 1 ;}
+		(( max++ ))
+	done
+
 	${KB} expose service  ${s} ${n} && \
         ${KB} apply  -f <(${KB} get route ${s}  -o json |jq -r '.spec |= . + {tls: {"insecureEdgeTerminationPolicy": "Redirect", "termination": "edge"}}') >/dev/null && \
         echo "Webhook URL: https://$(${KB} get route ${s} -o jsonpath='{.spec.host}')"
