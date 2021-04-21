@@ -86,10 +86,12 @@ function openshift_expose_service () {
     ${KB} delete route  ${s} 2>/dev/null >/dev/null || true
     [[ -n ${n} ]] && n="--hostname=${n}"
 	
-	while True;do
-		${KB} get service ${s} && break || true
-		sleep 10
+	while true;do
+		if ${KB} get service ${s} 2>/dev/null >/dev/null;then
+			break
+		fi
 		[[ ${max} == 12 ]] && { echo "cannot find ${s}"; exit 1 ;}
+		sleep 10
 		(( max++ ))
 	done
 
@@ -146,5 +148,7 @@ give_cluster_admin
 echo "-- Installation has finished --"
 echo
 
-${KB} get route >/dev/null 2>/dev/null && openshift_expose_service el-${SERVICE} ${PUBLIC_ROUTE_HOSTNAME}
+if ${KB} get route >/dev/null 2>/dev/null ;then
+	openshift_expose_service el-${SERVICE} ${PUBLIC_ROUTE_HOSTNAME} || true
+fi
 echo "Webhook secret: ${github_webhook_secret}"
