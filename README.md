@@ -1,3 +1,5 @@
+# ⚠️ This project has been deprecated in favor of the new GO based [openshift-pipelines/pipelines-as-code(github.com/openshift-pipelines/pipelines-as-code/)] ⚠️
+
 [![Container Repository on Quay](https://quay.io/repository/chmouel/tekton-asa-code/status "Container Repository on Quay")](https://quay.io/repository/chmouel/tekton-asa-code)
 
 # Tekton as a Code
